@@ -1,6 +1,8 @@
-import schedule
 import time
 import threading
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+from pytz import timezone
 from BroomDetector import BroomDetector
 
 
@@ -8,9 +10,9 @@ class Scheduling:
     def __init__(self, detector_args):
         self.detector_args = detector_args
         self.detector = None
-        self.scheduler_thread = threading.Thread(target=self.run_schedule)
-        self.scheduler_thread.daemon = True
-        self.scheduler_thread.start()
+        self.scheduler = BackgroundScheduler(timezone=timezone("Asia/Jakarta"))
+        self.setup_schedule_office()
+        self.scheduler.start()
 
     def start_detection(self):
         if not self.detector:
@@ -30,13 +32,20 @@ class Scheduling:
         else:
             print("BroomDetector is not running.")
 
-    def run_schedule(self):
-        schedule.every().day.at("15:28").do(self.start_detection)
-        schedule.every().day.at("15:29").do(self.stop_detection)
+    def setup_schedule_office(self):
+        work_days = ["mon", "tue", "wed", "thu", "fri"]
 
-        while True:
-            schedule.run_pending()
-            time.sleep(1)
+        for day in work_days:
+            start_trigger = CronTrigger(day_of_week=day, hour=6, minute=0, second=0)
+            self.scheduler.add_job(self.start_detection, trigger=start_trigger, id=f"start_{day}", replace_existing=True)
+
+            stop_trigger = CronTrigger(day_of_week=day, hour=8, minute=30, second=0)
+            self.scheduler.add_job(self.stop_detection, trigger=stop_trigger, id=f"stop_{day}", replace_existing=True)
+
+    def shutdown(self):
+        print("Shutdown scheduler and BroomDetector if not running...")
+        self.scheduler.shutdown(wait=False)
+        self.stop_detection()
 
 
 if __name__ == "__main__":
@@ -54,4 +63,4 @@ if __name__ == "__main__":
             time.sleep(1)
     except KeyboardInterrupt:
         print("Program terminated by user.")
-        scheduler.stop_detection()
+        scheduler.shutdown()
