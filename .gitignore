@@ -1,0 +1,8 @@
+.venv/*
+.vscode/*
+static/data/*
+static/models/*
+static/images/*
+static/videos/*
+*.pyc
+.draft.py

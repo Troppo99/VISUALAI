@@ -1,0 +1,125 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visual AI</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,300;0,400;0,700&display=swap"
+    rel="stylesheet" />
+
+  <!-- Feather Icons -->
+  <script src="https://unpkg.com/feather-icons"></script>
+
+  <!-- My Styles -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+</head>
+
+<body>
+  <!-- Navbar Start -->
+  <nav class="navbar">
+    <a href="#" class="navbar-logo">VISUAL<span>AI.</span></a>
+    <div class="navbar-nav">
+      <a href="#home">Home</a>
+      <a href="#streaming">Streaming</a>
+      <a href="#report">Report</a>
+      <a href="#contact">Kontak</a>
+    </div>
+    <div class="navbar-extra">
+      <a href="#" id="search"><i data-feather="search"></i></a>
+      <a href="#" id="hamburger-report"><i data-feather="report"></i></a>
+    </div>
+  </nav>
+  <!-- Navbar End -->
+
+  <!-- Hero Section Start -->
+  <section class="hero" id="home">
+    <main class="content">
+      <h1>Let <span class="cctv">CCTV</span> Effectively Finalize<span> The Company with AI</span></h1>
+      <p>
+        This project is developed to assist 5S supervisors in monitoring the condition of the work area using AI.
+      </p>
+    </main>
+  </section>
+  <!-- Hero Section End -->
+
+  <!-- Streaming Section Start -->
+  <section id="streaming" class="streaming">
+    <h2><span>AI</span> Streaming</h2>
+    <div class="row">
+      <div class="streaming-img">
+        <!-- Container untuk semua video dengan kemampuan scroll horizontal -->
+        <div class="video-wrapper">
+          <!-- Video Container 1 -->
+          <div class="video-container">
+            <!-- Menggunakan tag img untuk streaming MJPEG -->
+            <img src="{{ url_for('video_feed') }}" width="640" height="360">
+            <button class="fullscreen-btn">
+              <i data-feather="maximize"></i>
+            </button>
+          </div>
+          <!-- Video Container 2 -->
+          <div class="video-container">
+            <video width="640" height="360" autoplay loop muted>
+              <source src="../static/videos/video1.mp4" type="video/mp4">
+              Your browser does not support the video tag.
+            </video>
+            <button class="fullscreen-btn">
+              <i data-feather="maximize"></i>
+            </button>
+          </div>
+          <!-- Video Container 3 -->
+          <div class="video-container">
+            <video width="640" height="360" autoplay loop muted>
+              <source src="../static/videos/BROOM.mp4" type="video/mp4">
+              Your browser does not support the video tag.
+            </video>
+            <button class="fullscreen-btn">
+              <i data-feather="maximize"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="content">
+        <!-- Konten tambahan jika diperlukan -->
+      </div>
+    </div>
+  </section>
+  <!-- Streaming Section End -->
+
+  <!-- Report Section Start -->
+  <section id="report" class="report">
+    <h2><span>Data</span> Report</h2>
+    <div class="row">
+      <div class="report-card">
+        <img src="{{ url_for('static', filename='images/menu-bg.jpg') }}" alt="OFFICE1" class="report-card-img" />
+        <h3 class="report-card-title">- OFFICE1 -</h3>
+      </div>
+      <div class="report-card">
+        <img src="{{ url_for('static', filename='images/menu-bg.jpg') }}" alt="OFFICE2" class="report-card-img" />
+        <h3 class="report-card-title">- OFFICE2 -</h3>
+      </div>
+      <div class="report-card">
+        <img src="{{ url_for('static', filename='images/menu-bg.jpg') }}" alt="OFFICE3" class="report-card-img" />
+        <h3 class="report-card-title">- OFFICE3 -</h3>
+      </div>
+    </div>
+  </section>
+  <!-- Report Section End -->
+
+  <!-- Feather Icons Initialization -->
+  <script>
+    feather.replace();
+  </script>
+
+  <!-- My JavaScript -->
+  <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+</body>
+
+</html>
