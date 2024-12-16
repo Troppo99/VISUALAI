@@ -5,7 +5,7 @@ if __name__ == "__main__":
     detector_args = {
         "confidence_threshold": 0.5,
         "camera_name": "OFFICE3",
-        # "video_source": "static/videos/bd_test3.mp4",
+        "video_source": "src/videos/bd_test3.mp4",
         "window_size": (320, 240),
     }
 

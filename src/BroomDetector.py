@@ -24,7 +24,7 @@ class BroomDetector:
         self.rois, self.ip_camera = self.camera_config()
         self.choose_video_source()
         self.prev_frame_time = 0
-        self.model = YOLO("static/models/broom6l.pt").to("cuda")
+        self.model = YOLO("src/models/broom6l.pt").to("cuda")
         self.model.overrides["verbose"] = False
         if len(self.rois) > 1:
             self.union_roi = unary_union(self.rois)
@@ -42,7 +42,7 @@ class BroomDetector:
         self.stop_event = threading.Event()
 
     def camera_config(self):
-        with open("static/data/bd_config.json", "r") as f:
+        with open("src/data/bd_config.json", "r") as f:
             config = json.load(f)
         ip = config[self.camera_name]["ip"]
         scaled_rois = []
