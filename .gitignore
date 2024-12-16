@@ -6,4 +6,4 @@ static/images/*
 static/videos/*
 *.pyc
 .draft.py
-*/.all.py
+*.all.py
