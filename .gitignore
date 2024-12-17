@@ -1,3 +1,4 @@
+# main branch
 .venv/*
 .vscode/*
 static/data/*
@@ -6,6 +7,10 @@ static/images/*
 static/videos/*
 *.pyc
 .draft.py
-
-# main
 *_all.py
+
+# broomNoHTML branch
+src/data/*
+src/images/*
+src/models/*
+src/videos/*

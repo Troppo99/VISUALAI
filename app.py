@@ -6,7 +6,7 @@ app = Flask(__name__)
 
 
 def camera_feed():
-    cap = cv2.VideoCapture("rtsp://admin:oracle2015@10.5.0.170:554/Streaming/Channels/1")
+    cap = cv2.VideoCapture("rtsp://admin:oracle2015@172.16.0.141:554/Streaming/Channels/1")
 
     while True:
         _, frame = cap.read()
