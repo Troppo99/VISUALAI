@@ -3,8 +3,8 @@
 .vscode/*
 static/data/*
 static/models/*
-# static/images/*
-# static/videos/*
+static/images/*
+static/videos/*
 *.pyc
 .draft.py
 *_all.py
