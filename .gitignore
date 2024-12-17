@@ -6,3 +6,6 @@ static/images/*
 static/videos/*
 *.pyc
 .draft.py
+
+# main
+*_all.py
