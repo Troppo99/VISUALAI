@@ -17,6 +17,8 @@ def update_merged_file(directory, output_file, custom_order=None):
     else:
         files.sort()
 
+    exclude_imports = {"from BroomDetector import BroomDetector", "from DataHandler import DataHandler", "from Scheduling import Scheduling"}
+
     all_imports = set()
     code_lines = []
 
@@ -27,7 +29,9 @@ def update_merged_file(directory, output_file, custom_order=None):
             for line in infile:
                 # Cek apakah baris adalah import
                 if is_import_line(line):
-                    all_imports.add(line.strip())
+                    line_stripped = line.strip()
+                    if line_stripped not in exclude_imports:
+                        all_imports.add(line_stripped)
                 else:
                     code_lines.append(line)
 
@@ -48,4 +52,4 @@ def update_merged_file(directory, output_file, custom_order=None):
 
 
 # Contoh penggunaan
-update_merged_file("src", "build/_all.py", custom_order=["BroomDetector.py", "DataHandler.py", "Scheduling.py", ".run.py"])
+update_merged_file("src", "build/_all.py", custom_order=["BroomDetector.py", "DataHandler.py", "Scheduling.py", "_run.py"])
