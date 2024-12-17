@@ -9,7 +9,7 @@ if __name__ == "__main__":
         "window_size": (320, 240),
     }
 
-    scheduler = Scheduling(detector_args)
+    scheduler = Scheduling(detector_args, "SEWING")
 
     try:
         while True:
