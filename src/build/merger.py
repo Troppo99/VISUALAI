@@ -48,4 +48,4 @@ def update_merged_file(directory, output_file, custom_order=None):
 
 
 # Contoh penggunaan
-update_merged_file("src", "build/.all.py", custom_order=["BroomDetector.py", "DataHandler.py", "Scheduling.py", ".run.py"])
+update_merged_file("src", "build/_all.py", custom_order=["BroomDetector.py", "DataHandler.py", "Scheduling.py", ".run.py"])

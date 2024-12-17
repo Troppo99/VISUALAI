@@ -7,7 +7,7 @@ static/images/*
 static/videos/*
 *.pyc
 .draft.py
-*.all.py
+*_all.py
 
 # broomNoHTML branch
 src/data/*
