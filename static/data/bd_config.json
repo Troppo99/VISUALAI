@@ -1,0 +1,14 @@
+{
+  "OFFICE1": {
+    "rois": "D:/NWR/link/static/data/bd_rois/OFFICE1.json",
+    "ip": "10.5.0.170"
+  },
+  "OFFICE2": {
+    "rois": "D:/NWR/link/static/data/bd_rois/OFFICE2.json",
+    "ip": "10.5.0.182"
+  },
+  "OFFICE3": {
+    "rois": "D:/NWR/link/static/data/bd_rois/OFFICE3.json",
+    "ip": "10.5.0.161"
+  }
+}
