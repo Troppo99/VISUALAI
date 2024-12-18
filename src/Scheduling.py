@@ -2,43 +2,41 @@ import threading
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from pytz import timezone
-from src.BroomDetector import BroomDetector
+from datetime import datetime
+import time
+
+# pastikan import BroomDetector dan DataHandler jika diperlukan
 
 
 class Scheduling:
-    def __init__(self, detector_args, broom_schedule_type):
-        self.detector_args = detector_args
+    def __init__(self, detector_instance, broom_schedule_type):
+        self.detector = detector_instance
         self.broom_schedule_type = broom_schedule_type
-        self.detector = None
         self.scheduler = BackgroundScheduler(timezone=timezone("Asia/Jakarta"))
         self.setup_schedule()
         self.scheduler.start()
 
     def start_detection(self):
-        if not self.detector:
+        if self.detector:
             print("Starting BroomDetector...")
-            self.detector = BroomDetector(**self.detector_args)
-            detection_thread = threading.Thread(target=self.detector.main)
-            detection_thread.daemon = True
-            detection_thread.start()
+            self.detector.start()
         else:
-            print("BroomDetector is already running.")
+            print("No BroomDetector instance available.")
 
     def stop_detection(self):
         if self.detector:
             print("Stopping BroomDetector...")
-            self.detector.stop_event.set()
-            self.detector = None
+            self.detector.stop()
         else:
-            print("BroomDetector is not running.")
+            print("No BroomDetector instance available.")
 
     def setup_schedule(self):
         if self.broom_schedule_type == "OFFICE":
             work_days = ["mon", "tue", "wed", "thu", "fri"]
             for day in work_days:
                 # S1 : 06:00 - 08:30
-                h1, m1, s1 = (6, 0, 0)
-                h2, m2, s2 = (8, 30, 0)
+                h1, m1, s1 = (10, 8, 10)
+                h2, m2, s2 = (10, 8, 30)
                 start_trigger = CronTrigger(day_of_week=day, hour=h1, minute=m1, second=s1)
                 self.scheduler.add_job(self.start_detection, trigger=start_trigger, id=f"start_{day}", replace_existing=True)
                 stop_trigger = CronTrigger(day_of_week=day, hour=h2, minute=m2, second=s2)

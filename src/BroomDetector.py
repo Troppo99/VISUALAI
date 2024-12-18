@@ -40,6 +40,10 @@ class BroomDetector:
         self.start_run_time = time.time()
         self.capture_done = False
         self.stop_event = threading.Event()
+        self.frame_queue = None
+        self.frame_thread = None
+        self.video_fps = None
+        self.fps = 0
 
     def camera_config(self):
         with open("static/data/bd_config.json", "r") as f:
@@ -89,7 +93,7 @@ class BroomDetector:
             else:
                 self.is_local_video = False
                 self.video_fps = None
-                exit()
+                # exit() atau biarkan saja untuk handle error
 
     def capture_frame(self):
         while not self.stop_event.is_set():
@@ -224,14 +228,18 @@ class BroomDetector:
         return overlap_results
 
     def generate_frames(self):
+        # Mirip main(), tapi hasilnya di-streaming
         state = ""
         skip_frames = 2
         frame_count = 0
+        final_overlap = 0
+        if self.frame_queue is None:
+            self.frame_queue = queue.Queue(maxsize=10)
+
         try:
             if self.video_fps is None:
-                self.frame_thread = threading.Thread(target=self.capture_frame)
-                self.frame_thread.daemon = True
-                self.frame_thread.start()
+                # Jalankan thread capture frame hanya saat start_detection()
+                # Pastikan start_detection() memanggil self.start()
                 while not self.stop_event.is_set():
                     try:
                         frame = self.frame_queue.get(timeout=1)
@@ -249,9 +257,6 @@ class BroomDetector:
                     ret, buffer = cv2.imencode(".jpg", output_frame)
                     frame = buffer.tobytes()
                     yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
-                cv2.destroyAllWindows()
-                if self.frame_thread.is_alive():
-                    self.frame_thread.join()
             else:
                 cap = cv2.VideoCapture(self.video_source)
                 frame_delay = int(1000 / self.video_fps)
@@ -274,7 +279,6 @@ class BroomDetector:
                     frame = buffer.tobytes()
                     yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
                 cap.release()
-                cv2.destroyAllWindows()
         finally:
             if final_overlap >= 50:
                 state = "Menyapu selesai"
@@ -287,3 +291,23 @@ class BroomDetector:
                 DataHandler().save_data(output_frame, final_overlap, self.camera_name, insert=True)
             else:
                 print("No frame to save.")
+
+    def start(self):
+        if self.stop_event.is_set():
+            self.stop_event.clear()
+        if self.frame_queue is None:
+            self.frame_queue = queue.Queue(maxsize=10)  # Pastikan queue dibuat di sini
+        if self.video_fps is None and (self.frame_thread is None or not self.frame_thread.is_alive()):
+            self.frame_thread = threading.Thread(target=self.capture_frame)
+            self.frame_thread.daemon = True
+            self.frame_thread.start()
+
+
+    def stop(self):
+        self.stop_event.set()
+        if self.frame_thread and self.frame_thread.is_alive():
+            self.frame_thread.join()
+        self.frame_thread = None
+        self.frame_queue = None
+        # Reset kondisi jika perlu
+        self.reset_trail_map()

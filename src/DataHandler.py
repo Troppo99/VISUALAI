@@ -6,7 +6,7 @@ import cvzone
 
 
 class DataHandler:
-    def __init__(self, host="localhost", user="root", password="robot123", database="visualai_db", table="cleaning_floor", port=3306):
+    def __init__(self, host="localhost", user="root", password="robot123", database="visualai_db", table="cleaning", port=3306):
         self.host = host
         self.user = user
         self.password = password
