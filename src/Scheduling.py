@@ -2,7 +2,7 @@ import threading
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from pytz import timezone
-from BroomDetector import BroomDetector
+from src.BroomDetector import BroomDetector
 
 
 class Scheduling:

@@ -11,7 +11,7 @@ import cvzone
 import threading
 import queue
 import numpy as np
-from DataHandler import DataHandler
+from src.DataHandler import DataHandler
 
 
 class BroomDetector:
@@ -24,7 +24,7 @@ class BroomDetector:
         self.rois, self.ip_camera = self.camera_config()
         self.choose_video_source()
         self.prev_frame_time = 0
-        self.model = YOLO("src/models/broom6l.pt").to("cuda")
+        self.model = YOLO("static/models/broom6l.pt").to("cuda")
         self.model.overrides["verbose"] = False
         if len(self.rois) > 1:
             self.union_roi = unary_union(self.rois)
@@ -42,7 +42,7 @@ class BroomDetector:
         self.stop_event = threading.Event()
 
     def camera_config(self):
-        with open("src/data/bd_config.json", "r") as f:
+        with open("static/data/bd_config.json", "r") as f:
             config = json.load(f)
         ip = config[self.camera_name]["ip"]
         scaled_rois = []
@@ -79,7 +79,6 @@ class BroomDetector:
             self.is_local_video = False
             self.video_source = f"rtsp://admin:oracle2015@{self.ip_camera}:554/Streaming/Channels/1"
         else:
-            self.video_source = self.video_source
             if os.path.isfile(self.video_source):
                 self.is_local_video = True
                 cap = cv2.VideoCapture(self.video_source)
@@ -224,15 +223,10 @@ class BroomDetector:
             overlap_results.append(iou > 0)
         return overlap_results
 
-    def main(self):
+    def generate_frames(self):
         state = ""
         skip_frames = 2
         frame_count = 0
-        window_name = "Brooming Detection"
-        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-        cv2.resizeWindow(window_name, self.window_size[0], self.window_size[1])
-        final_overlap = 0
-
         try:
             if self.video_fps is None:
                 self.frame_thread = threading.Thread(target=self.capture_frame)
@@ -250,14 +244,11 @@ class BroomDetector:
                     time_diff = current_time - self.prev_frame_time
                     self.fps = 1 / time_diff if time_diff > 0 else 0
                     self.prev_frame_time = current_time
-                    frame_resized, final_overlap = self.process_frame(frame)
-                    cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
-                    cv2.imshow(window_name, frame_resized)
-                    key = cv2.waitKey(1) & 0xFF
-                    if key == ord("n") or key == ord("N"):
-                        print("Manual stop detected.")
-                        self.stop_event.set()
-                        break
+                    output_frame, final_overlap = self.process_frame(frame)
+                    cvzone.putTextRect(output_frame, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
+                    ret, buffer = cv2.imencode(".jpg", output_frame)
+                    frame = buffer.tobytes()
+                    yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
                 cv2.destroyAllWindows()
                 if self.frame_thread.is_alive():
                     self.frame_thread.join()
@@ -277,16 +268,11 @@ class BroomDetector:
                     time_diff = current_time - self.prev_frame_time
                     self.fps = 1 / time_diff if time_diff > 0 else 0
                     self.prev_frame_time = current_time
-                    frame_resized, final_overlap = self.process_frame(frame)
-                    cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
-                    cv2.imshow(window_name, frame_resized)
-                    processing_time = (time.time() - start_time) * 1000
-                    adjusted_delay = max(int(frame_delay - processing_time), 1)
-                    key = cv2.waitKey(adjusted_delay) & 0xFF
-                    if key == ord("n") or key == ord("N"):
-                        print("Manual stop detected.")
-                        self.stop_event.set()
-                        break
+                    output_frame, final_overlap = self.process_frame(frame)
+                    cvzone.putTextRect(output_frame, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
+                    ret, buffer = cv2.imencode(".jpg", output_frame)
+                    frame = buffer.tobytes()
+                    yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
                 cap.release()
                 cv2.destroyAllWindows()
         finally:
@@ -297,7 +283,7 @@ class BroomDetector:
             else:
                 state = "Tidak menyapu"
             print(state)
-            if "frame_resized" in locals():
-                DataHandler().save_data(frame_resized, final_overlap, self.camera_name, insert=True)
+            if "output_frame" in locals():
+                DataHandler().save_data(output_frame, final_overlap, self.camera_name, insert=True)
             else:
                 print("No frame to save.")
