@@ -35,7 +35,7 @@ class DataHandler:
             cv2.imwrite(self.image_path, frame)
             if insert:
                 self.insert_data(percentage)
-            print("Image saved and inserted successfully" if insert else "Image saved without inserting")
+            print("DML successfully" if insert else "DML unsuccessfully")
         except Exception as e:
             print(f"Failed to save image: {e}")
             raise
