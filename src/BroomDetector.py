@@ -302,7 +302,6 @@ class BroomDetector:
             self.frame_thread.daemon = True
             self.frame_thread.start()
 
-
     def stop(self):
         self.stop_event.set()
         if self.frame_thread and self.frame_thread.is_alive():
