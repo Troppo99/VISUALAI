@@ -17,18 +17,22 @@ class Scheduling:
         self.scheduler.start()
 
     def start_detection(self):
-        if self.detector:
-            print("Starting BroomDetector...")
+        if self.detector and not self.detector.stop_event.is_set() and self.detector.frame_thread and self.detector.frame_thread.is_alive():
+            print("BroomDetector sudah berjalan.")
+        elif self.detector:
+            print("Memulai BroomDetector...")
             self.detector.start()
         else:
-            print("No BroomDetector instance available.")
+            print("Tidak ada instance BroomDetector yang tersedia.")
 
     def stop_detection(self):
-        if self.detector:
-            print("Stopping BroomDetector...")
+        if self.detector and not self.detector.stop_event.is_set() and self.detector.frame_thread and self.detector.frame_thread.is_alive():
+            print("Menghentikan BroomDetector...")
             self.detector.stop()
+        elif self.detector:
+            print("BroomDetector sudah dihentikan.")
         else:
-            print("No BroomDetector instance available.")
+            print("Tidak ada instance BroomDetector yang tersedia.")
 
     def setup_schedule(self):
         if self.broom_schedule_type == "OFFICE":
@@ -47,12 +51,12 @@ class Scheduling:
                 # S1 : 07:30 - 09:45
                 # S2 : 09:45 - 12:50
                 # S3 : 12:50 - 13:05
-                h1, m1, s1 = (7, 30, 0)
-                h2, m2, s2 = (9, 45, 0)
-                h3, m3, s3 = (9, 45, 0)
-                h4, m4, s4 = (12, 50, 0)
-                h5, m5, s5 = (12, 50, 0)
-                h6, m6, s6 = (13, 5, 0)
+                h1, m1, s1 = (8, 25, 0)
+                h2, m2, s2 = (8, 25, 30)
+                h3, m3, s3 = (8, 25, 50)
+                h4, m4, s4 = (8, 26, 0)
+                h5, m5, s5 = (8, 26, 10)
+                h6, m6, s6 = (8, 26, 30)
                 s1_start = CronTrigger(day_of_week=day, hour=h1, minute=m1, second=s1)
                 s1_stop = CronTrigger(day_of_week=day, hour=h2, minute=m2, second=s2)
                 s2_start = CronTrigger(day_of_week=day, hour=h3, minute=m3, second=s3)
