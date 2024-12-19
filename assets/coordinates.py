@@ -3,7 +3,8 @@ import math
 import os
 
 # Input source (RTSP link, local video file, image file)
-video_path = "rtsp://admin:oracle2015@172.16.0.32:554/Streaming/Channels/1"
+file_name = "SEWING1"
+video_path = "rtsp://admin:oracle2015@172.16.0.116:554/Streaming/Channels/1"
 # Contoh lainnya:
 # video_path = "rtsp://username:password@ip_address:554/Streaming/Channels/1"
 # video_path = "C:/path/to/video.mp4"
@@ -99,7 +100,7 @@ def print_chains():
 
 
 def print_borders():
-    borders = [[(p[0], p[1]) for p in chain] for chain in chains if len(chain) > 0]
+    borders = [[[p[0], p[1]] for p in chain] for chain in chains if len(chain) > 0]
     print(f"borders = {borders}")
 
 
