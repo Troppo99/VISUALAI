@@ -30,7 +30,7 @@ class ContopDetector:
     def camera_config(self):
         with open("static/data/ctd_config.json", "r") as f:
             config = json.load(f)
-        ip = config.get(self.camera_name)
+        ip = config[self.camera_name]["ip"]
         if not ip:
             raise ValueError(f"Camera name '{self.camera_name}' not found in configuration.")
         return ip
@@ -75,9 +75,8 @@ class ContopDetector:
             cap.release()
 
     def export_frame(self, frame):
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         with torch.no_grad():
-            results = self.model(source=frame_rgb, stream=True, imgsz=self.process_size[0], task="segment")
+            results = self.model(source=frame, stream=True, imgsz=self.process_size[0], task="segment")
         segments = []
         for result in results:
             if not result.boxes or not result.masks:
@@ -181,7 +180,7 @@ class ContopDetector:
 
 if __name__ == "__main__":
     ctd = ContopDetector(
-        contop_confidence_threshold=0,
+        contop_confidence_threshold=0.5,
         camera_name="FREEMETAL1",
         # video_source=r"D:\NWR\videos\Bahan\C_171224.mp4",
     )
