@@ -15,11 +15,10 @@ from src.DataHandler import DataHandler
 
 
 class BroomDetector:
-    def __init__(self, confidence_threshold=0.5, video_source=None, camera_name=None, window_size=(320, 240)):
+    def __init__(self, confidence_threshold=0.5, video_source=None, camera_name=None):
         self.confidence_threshold = confidence_threshold
         self.video_source = video_source
         self.camera_name = camera_name
-        self.window_size = window_size
         self.process_size = (960, 540)
         self.rois, self.ip_camera = self.camera_config()
         self.choose_video_source()
