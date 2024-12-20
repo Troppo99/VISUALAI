@@ -304,5 +304,9 @@ class BroomDetector:
 
 
 if __name__ == "__main__":
-    bd = BroomDetector(confidence_threshold=0, camera_name="OFFICE1", video_source="static/videos/bd_test.mp4")
+    bd = BroomDetector(
+        confidence_threshold=0,
+        camera_name="SEWINGBACK2",
+        # video_source="static/videos/bd_test.mp4",
+    )
     bd.main()
