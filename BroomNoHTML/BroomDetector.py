@@ -301,3 +301,7 @@ class BroomDetector:
                 DataHandler().save_data(frame_resized, final_overlap, self.camera_name, insert=True)
             else:
                 print("No frame to save.")
+
+if __name__ == "__main__":
+    bd = BroomDetector(camera_name="OFFICE1")
+    bd.main()
