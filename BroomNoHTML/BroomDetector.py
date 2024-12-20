@@ -303,5 +303,5 @@ class BroomDetector:
                 print("No frame to save.")
 
 if __name__ == "__main__":
-    bd = BroomDetector(camera_name="OFFICE1")
+    bd = BroomDetector(confidence_threshold=0, camera_name="OFFICE1", video_source="static/videos/bd_test.mp4")
     bd.main()
