@@ -3,7 +3,12 @@
 body {
   font-family: 'Poppins', sans-serif;
   scroll-behavior: smooth;
-  /* Agar smooth scroll ke anchor */
+  /* agar scroll ke anchor berjalan halus */
+}
+
+.content-section {
+  padding-top: 5rem;
+  /* beri jarak agar konten tidak tertutup navbar */
 }
 
 .navbar-brand {
