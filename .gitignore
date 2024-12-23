@@ -10,5 +10,5 @@ static/videos/*
 *_all.py
 */.draft.html
 
-website/static/videos/*
 website/static/images/*
+website/static/videos/*
