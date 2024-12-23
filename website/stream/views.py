@@ -4,6 +4,6 @@ from django.shortcuts import render
 def index(request):
     context = {
         "title": "VisualAI",
-        "heading": "Welcome to VisualAI",
+        "heading": "This is AI Streaming",
     }
-    return render(request, "index.html", context)
+    return render(request, "stream/index.html", context)
