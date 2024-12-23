@@ -140,6 +140,6 @@ if __name__ == "__main__":
     td = TableDetector(
         video_source=None,
         camera_name="FREEMETAL1",
-        window_size=(320, 240),
+        window_size=(640, 360),
     )
     td.main()
