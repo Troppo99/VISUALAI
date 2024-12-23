@@ -9,3 +9,6 @@ static/videos/*
 .draft.py
 *_all.py
 */.draft.html
+
+website/static/images/*
+website/static/videos/*
