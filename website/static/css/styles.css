@@ -1,0 +1,15 @@
+/* static/css/styles.css */
+
+body {
+  font-family: 'Poppins', sans-serif;
+  scroll-behavior: smooth;
+  /* Agar smooth scroll ke anchor */
+}
+
+.navbar-brand {
+  font-weight: bold;
+}
+
+.navbar-brand span {
+  color: #0d6efd;
+}
