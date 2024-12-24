@@ -18,3 +18,9 @@ body {
 .navbar-brand span {
   color: #0d6efd;
 }
+
+a.video-link {
+  cursor: pointer;
+  display: block;
+  /* Pastikan link mengisi blok elemen video */
+}
