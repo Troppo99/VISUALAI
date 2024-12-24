@@ -1,10 +1,10 @@
 # main branch
 .venv/*
 .vscode/*
-static/data/*
-static/models/*
-static/images/*
-static/videos/*
+archives/static/data/*
+archives/static/models/*
+archives/static/images/*
+archives/static/videos/*
 *.pyc
 .draft.py
 *_all.py
