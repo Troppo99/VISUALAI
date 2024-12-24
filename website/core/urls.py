@@ -3,6 +3,6 @@ from . import views
 
 urlpatterns = [
     path("", views.index, name="home"),
-    # path('seiri/', views.seiri, name='seiri')
-    # (Jika nanti ingin menambahkan halaman full reload, kita bisa tambahkan)
+    path("seiso_feed/", views.seiso_feed, name="seiso_feed"),
+    # path("show_realtime_seiso/", views.show_realtime_seiso, name="show_realtime_seiso"),
 ]
