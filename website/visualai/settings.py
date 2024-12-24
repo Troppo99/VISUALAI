@@ -27,7 +27,9 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "core",  # Tambahkan app 'core'
+    "core",
+    "seiso",
+    "seiketsu",
 ]
 
 MIDDLEWARE = [
@@ -45,7 +47,7 @@ ROOT_URLCONF = "visualai.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "core" / "templates"],
+        "DIRS": ["templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [

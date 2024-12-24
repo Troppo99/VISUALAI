@@ -1,8 +1,10 @@
-from django.urls import path
+from django.urls import path, include
 from . import views
 
 urlpatterns = [
     path("", views.index, name="home"),
-    path("seiso_feed/", views.seiso_feed, name="seiso_feed"),
-    # path("show_realtime_seiso/", views.show_realtime_seiso, name="show_realtime_seiso"),
+    path("seiso_page/", include("seiso.urls")),
+    path("seiketsu_page/", include("seiketsu.urls")),
+    path("seiketsu_feed/", views.seiketsu_feed, name="seiketsu_feed"),
+    # path("show_realtime_seiketsu/", views.show_realtime_seiketsu, name="show_realtime_seiketsu"),
 ]
