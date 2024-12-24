@@ -5,11 +5,11 @@ from django.contrib.staticfiles import finders
 
 
 class ContopDetector:
-    def __init__(self, contop_confidence_threshold=0.5, video_source=None, camera_name=None, window_size=(320, 240)):
+    def __init__(self, contop_confidence_threshold=0.5, video_source=None, camera_name=None):
         self.contop_confidence_threshold = contop_confidence_threshold
         self.video_source = video_source
         self.camera_name = camera_name
-        self.window_size = window_size
+        self.window_size = (640, 360)
         self.process_size = (640, 640)
         self.stop_event = threading.Event()
         self.lock = threading.Lock()
@@ -128,6 +128,7 @@ class ContopDetector:
                 self.fps = 1 / time_diff if time_diff > 0 else 0
                 self.prev_frame_time = current_time
                 output_frame = self.process_frame(frame)
+                output_frame = cv2.resize(output_frame, self.window_size)
                 ret, buffer = cv2.imencode(".jpg", output_frame)
                 frame_bytes = buffer.tobytes()
                 yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n")
@@ -149,6 +150,7 @@ class ContopDetector:
                 self.fps = 1 / time_diff if time_diff > 0 else 0
                 self.prev_frame_time = current_time
                 output_frame = self.process_frame(frame)
+                output_frame = cv2.resize(output_frame, self.window_size)
                 ret, buffer = cv2.imencode(".jpg", output_frame)
                 frame_bytes = buffer.tobytes()
                 yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n")
