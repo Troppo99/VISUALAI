@@ -1,15 +1,16 @@
-# main branch
 .venv/*
 .vscode/*
+
 archives/static/data/*
 archives/static/models/*
 archives/static/images/*
 archives/static/videos/*
-*.pyc
-.draft.py
-*_all.py
-.draft.*
 
 website/static/images/*
 website/static/videos/*
 website/static/resources/*
+
+*.pyc
+.draft.py
+*_all.py
+.draft.*
