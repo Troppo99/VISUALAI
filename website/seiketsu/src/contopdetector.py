@@ -1,15 +1,6 @@
-import os
-import cv2
+import os, cv2, torch, cvzone, time, threading, queue, math, json, numpy as np
 from ultralytics import YOLO
-import torch
-import cvzone
-import time
-import threading
-import queue
-import math
-import numpy as np
 from shapely.geometry import Polygon
-import json
 from django.contrib.staticfiles import finders
 
 
