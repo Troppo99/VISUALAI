@@ -3,4 +3,6 @@ from . import views
 
 urlpatterns = [
     path("", views.index, name="home"),
+    path("seiketsu_feed/", views.seiketsu_feed, name="seiketsu_feed"),
+    # path("show_realtime_seiketsu/", views.show_realtime_seiketsu, name="show_realtime_seiketsu"),
 ]

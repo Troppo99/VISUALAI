@@ -36,7 +36,6 @@
     </h2>
     <div class="row justify-content-center">
       <div class="col-md-6 mb-3">
-        <!-- img streaming -->
         <video width="100%" height="auto" autoplay loop muted>
           <source src="{% static 'videos/vid_seiso.mp4' %}" type="video/mp4">
         </video>
@@ -53,7 +52,9 @@
     </h2>
     <div class="row justify-content-center">
       <div class="col-md-6 mb-3">
-        <img src="{% url 'seiketsu_feed' %}" width="100%", alt="Live Seiketsu Feed" />
+        <video width="100%" height="auto" autoplay loop muted>
+          <source src="{% static 'videos/vid_seiketsu.mp4' %}" type="video/mp4">
+        </video>
       </div>
     </div>
   </div>
