@@ -11,7 +11,7 @@ def index(request):
 def seiso_feed(request):
     detector = BroomDetector(
         camera_name="OFFICE1",
-        # video_source=finders.find("videos/contop testing.mp4"),
+        # video_source=finders.find("videos/vid_seiso_test.mp4"),
     )
     return StreamingHttpResponse(detector.stream_frames(), content_type="multipart/x-mixed-replace; boundary=frame")
 
