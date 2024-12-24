@@ -8,7 +8,7 @@ archives/static/videos/*
 *.pyc
 .draft.py
 *_all.py
-*/.draft.html
+.draft.*
 
 website/static/images/*
 website/static/videos/*
