@@ -1,6 +1,15 @@
-import os, cv2, torch, cvzone, time, threading, queue, math, json, numpy as np
+import os
+import cv2
 from ultralytics import YOLO
+import torch
+import cvzone
+import time
+import threading
+import queue
+import math
+import numpy as np
 from shapely.geometry import Polygon
+import json
 from django.contrib.staticfiles import finders
 
 
@@ -14,21 +23,11 @@ class ContopDetector:
         self.stop_event = threading.Event()
         self.lock = threading.Lock()
         self.prev_frame_time = 0
-        self.fps = 0
-
-        # load model
         model_path = finders.find("resources/models/contop1l.pt")
         self.model = YOLO(model_path).to("cuda" if torch.cuda.is_available() else "cpu")
         self.model.overrides["verbose"] = False
-
-        # konfig ip camera
         self.ip_camera = self.camera_config()
         self.choose_video_source()
-
-        # antrian frame
-        self.frame_queue = queue.Queue(maxsize=10)
-        self.frame_thread = None
-        self.video_fps = None
 
     def camera_config(self):
         conf_path = finders.find("resources/conf/ctd_config.json")
@@ -41,6 +40,8 @@ class ContopDetector:
 
     def choose_video_source(self):
         if self.video_source is None:
+            self.frame_queue = queue.Queue(maxsize=10)
+            self.frame_thread = None
             self.video_source = f"rtsp://admin:oracle2015@{self.ip_camera}:554/Streaming/Channels/1"
             self.is_local_video = False
             self.video_fps = None
@@ -53,6 +54,8 @@ class ContopDetector:
                     self.video_fps = 25
                 cap.release()
             else:
+                self.is_local_video = False
+                self.video_fps = None
                 raise ValueError(f"Video source '{self.video_source}' is not a valid file.")
 
     def capture_frame(self):
@@ -98,47 +101,66 @@ class ContopDetector:
         return segments
 
     def process_frame(self, frame):
-        f = cv2.resize(frame, self.process_size)
-        segs = self.export_frame(f)
-        overlay = f.copy()
+        frame_resized = cv2.resize(frame, self.process_size)
+        segments = self.export_frame(frame_resized)
+        overlay = frame_resized.copy()
 
-        for poly_xy, (cx, cy) in segs:
+        for poly_xy, (cx, cy) in segments:
             pts = np.array(poly_xy, np.int32).reshape((-1, 1, 2))
             cv2.fillPoly(overlay, [pts], (0, 70, 255))
-            cvzone.putTextRect(f, "Violation!", (int(cx), int(cy) - 10), scale=1, thickness=2, offset=5, colorR=(0, 70, 255), colorT=(255, 255, 255))
+            cvzone.putTextRect(frame_resized, "Violation!", (int(cx), int(cy) - 10), scale=1, thickness=2, offset=5, colorR=(0, 70, 255), colorT=(255, 255, 255))
 
         alpha = 0.5
-        cv2.addWeighted(overlay, alpha, f, 1 - alpha, 0, f)
-        return f
+        cv2.addWeighted(overlay, alpha, frame_resized, 1 - alpha, 0, frame_resized)
+        cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
+
+        return frame_resized
 
     def stream_frames(self):
-        skip = 2
+        skip_frames = 2
         frame_count = 0
-        self.frame_thread = threading.Thread(target=self.capture_frame, daemon=True)
-        self.frame_thread.start()
 
-        while not self.stop_event.is_set():
-            try:
-                frame = self.frame_queue.get(timeout=1)
-            except queue.Empty:
-                continue
-            frame_count += 1
-            if frame_count % skip != 0:
-                continue
+        if self.video_fps is None:
+            self.frame_thread = threading.Thread(target=self.capture_frame, daemon=True)
+            self.frame_thread.start()
+            while not self.stop_event.is_set():
+                try:
+                    frame = self.frame_queue.get(timeout=1)
+                except queue.Empty:
+                    continue
+                frame_count += 1
+                if frame_count % skip_frames != 0:
+                    continue
 
-            curr_time = time.time()
-            time_diff = curr_time - self.prev_frame_time
-            self.fps = 1 / time_diff if time_diff > 0 else 0
-            self.prev_frame_time = curr_time
+                current_time = time.time()
+                time_diff = current_time - self.prev_frame_time
+                self.fps = 1 / time_diff if time_diff > 0 else 0
+                self.prev_frame_time = current_time
+                output_frame = self.process_frame(frame)
+                ret, buffer = cv2.imencode(".jpg", output_frame)
+                frame_bytes = buffer.tobytes()
+                yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n")
 
-            out = self.process_frame(frame)
-            cvzone.putTextRect(out, f"FPS: {int(self.fps)}", (10, 80), scale=1, thickness=2, offset=5)
-
-            ret, buffer = cv2.imencode(".jpg", out)
-            frame_bytes = buffer.tobytes()
-
-            # yield dalam format MJPEG
-            yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n")
+        else:
+            cap = cv2.VideoCapture(self.video_source)
+            frame_delay = max(int(1000 / self.video_fps), 1)
+            while cap.isOpened() and not self.stop_event.is_set():
+                start_time = time.time()
+                ret, frame = cap.read()
+                if not ret:
+                    print("Video ended.")
+                    break
+                frame_count += 1
+                if frame_count % skip_frames != 0:
+                    continue
+                current_time = time.time()
+                time_diff = current_time - self.prev_frame_time
+                self.fps = 1 / time_diff if time_diff > 0 else 0
+                self.prev_frame_time = current_time
+                output_frame = self.process_frame(frame)
+                ret, buffer = cv2.imencode(".jpg", output_frame)
+                frame_bytes = buffer.tobytes()
+                yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n")
 
     def stop(self):
         self.stop_event.set()
