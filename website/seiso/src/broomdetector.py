@@ -15,7 +15,6 @@ class BroomDetector:
         self.stop_event = threading.Event()
         self.lock = threading.Lock()
         self.prev_frame_time = 0
-        # self.model = YOLO(r"C:\xampp\htdocs\VISUALAI\website\static\resources\models\broom6l.pt").to("cuda")
         self.model = YOLO(finders.find("resources/models/broom6l.pt")).to("cuda" if torch.cuda.is_available() else "cpu")
         self.model.overrides["verbose"] = False
         self.rois, self.ip_camera = self.camera_config()
@@ -27,6 +26,7 @@ class BroomDetector:
             self.union_roi = self.rois[0]
         else:
             self.union_roi = None
+
         self.trail_map_polygon = Polygon()
         self.trail_map_mask = np.zeros((self.process_size[1], self.process_size[0], 3), dtype=np.uint8)
 
@@ -34,14 +34,15 @@ class BroomDetector:
         self.trail_map_start_time = None
         self.start_run_time = time.time()
         self.capture_done = False
+        self.last_output_frame = None
+        self.last_final_overlap = 0
 
     def camera_config(self):
-        # with open(r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf\ctd_config.json", "r") as f:
         with open(finders.find("resources/conf/ctd_config.json"), "r") as f:
             config = json.load(f)
         ip = config[self.camera_name]["ip"]
         scaled_rois = []
-        rois_path = config[self.camera_name]["rois"]
+        rois_path = finders.find(config[self.camera_name]["rois"])
         with open(rois_path, "r") as rois_file:
             original_rois = json.load(rois_file)
         for roi_group in original_rois:
@@ -106,7 +107,7 @@ class BroomDetector:
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
                 conf = box.conf[0]
                 class_id = self.model.names[int(box.cls[0])]
-                if conf > self.confidence_threshold:
+                if conf > self.broom_confidence_threshold:
                     boxes.append((x1, y1, x2, y2, class_id))
         return boxes
 
@@ -166,6 +167,8 @@ class BroomDetector:
         output_frame = cv2.addWeighted(output_frame, 1.0, self.trail_map_mask, alpha, 0)
         cvzone.putTextRect(output_frame, f"Percentage: {overlap_percentage:.2f}%", (10, 60), scale=1, thickness=2, offset=5)
         cvzone.putTextRect(output_frame, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
+        self.last_output_frame = output_frame
+        self.last_final_overlap = overlap_percentage
         return output_frame, overlap_percentage
 
     def draw_rois(self, frame):
