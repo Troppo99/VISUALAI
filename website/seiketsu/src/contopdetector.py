@@ -14,19 +14,15 @@ class ContopDetector:
         self.stop_event = threading.Event()
         self.lock = threading.Lock()
         self.prev_frame_time = 0
-        model_path = finders.find("resources/models/contop1l.pt")
-        self.model = YOLO(model_path).to("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = YOLO(finders.find("resources/models/contop1l.pt")).to("cuda" if torch.cuda.is_available() else "cpu")
         self.model.overrides["verbose"] = False
         self.ip_camera = self.camera_config()
         self.choose_video_source()
 
     def camera_config(self):
-        conf_path = finders.find("resources/conf/ctd_config.json")
-        with open(conf_path, "r") as f:
+        with open(finders.find("resources/conf/ctd_config.json"), "r") as f:
             config = json.load(f)
         ip = config[self.camera_name]["ip"]
-        if not ip:
-            raise ValueError(f"Camera name '{self.camera_name}' not found in configuration.")
         return ip
 
     def choose_video_source(self):
