@@ -1,14 +1,10 @@
-/* static/css/styles.css */
-
 body {
   font-family: 'Poppins', sans-serif;
   scroll-behavior: smooth;
-  /* agar scroll ke anchor berjalan halus */
 }
 
 .content-section {
   padding-top: 5rem;
-  /* beri jarak agar konten tidak tertutup navbar */
 }
 
 .navbar-brand {
@@ -22,5 +18,4 @@ body {
 a.video-link {
   cursor: pointer;
   display: block;
-  /* Pastikan link mengisi blok elemen video */
 }
