@@ -5,7 +5,9 @@ from django.contrib.staticfiles import finders
 
 
 def index(request):
-    return render(request, "seiketsu/index.html")
+    video_count = 11
+    videos = range(1, video_count + 1)
+    return render(request, "seiketsu/index.html", {"videos": videos})
 
 
 def seiketsu_feed(request):
