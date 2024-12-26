@@ -2,6 +2,10 @@ import os, cv2, torch, cvzone, time, threading, queue, math, json, numpy as np
 from ultralytics import YOLO
 from shapely.geometry import Polygon
 from django.contrib.staticfiles import finders
+from django.utils import timezone
+from seiketsu.models import ContopCounting
+from django.core.files.base import ContentFile
+from datetime import datetime
 
 
 class ContopDetector:
@@ -18,6 +22,9 @@ class ContopDetector:
         self.model.overrides["verbose"] = False
         self.ip_camera = self.camera_config()
         self.choose_video_source()
+        self.last_save_time = time.time()
+        self.save_interval = 5
+        self.amount = 0
 
     def camera_config(self):
         with open(finders.find("resources/conf/ctd_config.json"), "r") as f:
@@ -70,6 +77,7 @@ class ContopDetector:
             results = self.model(source=frame, stream=True, imgsz=self.process_size[0], task="segment")
 
         segments = []
+        detected_boxes = 0
         for result in results:
             if not result.boxes or not result.masks:
                 continue
@@ -83,8 +91,11 @@ class ContopDetector:
                 if polygon.is_empty or not polygon.is_valid:
                     continue
                 if conf > self.contop_confidence_threshold:
+                    detected_boxes += 1
                     c = polygon.centroid
                     segments.append((poly_xy, (c.x, c.y)))
+
+        self.amount = detected_boxes
         return segments
 
     def process_frame(self, frame):
@@ -125,6 +136,18 @@ class ContopDetector:
                 self.prev_frame_time = current_time
                 output_frame = self.process_frame(frame)
                 output_frame = cv2.resize(output_frame, self.window_size)
+
+                if current_time - self.last_save_time >= self.save_interval:
+                    # Simpan gambar frame terakhir
+                    jumlah_contop = self.amount
+                    is_success, buffer = cv2.imencode(".jpg", output_frame)
+                    if is_success:
+                        image_bytes = buffer.tobytes()
+                        image_content = ContentFile(image_bytes, f"frame_{int(current_time)}.jpg")
+                        # Buat record di database
+                        ContopCounting.objects.create(timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), jumlah_contop=jumlah_contop, gambar_terakhir=image_content)
+                        self.last_save_time = current_time
+
                 ret, buffer = cv2.imencode(".jpg", output_frame)
                 frame_bytes = buffer.tobytes()
                 yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n")
@@ -147,6 +170,18 @@ class ContopDetector:
                 self.prev_frame_time = current_time
                 output_frame = self.process_frame(frame)
                 output_frame = cv2.resize(output_frame, self.window_size)
+
+                if current_time - self.last_save_time >= self.save_interval:
+                    # Simpan gambar frame terakhir
+                    jumlah_contop = self.amount
+                    is_success, buffer = cv2.imencode(".jpg", output_frame)
+                    if is_success:
+                        image_bytes = buffer.tobytes()
+                        image_content = ContentFile(image_bytes, f"frame_{int(current_time)}.jpg")
+                        # Buat record di database
+                        ContopCounting.objects.create(timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), jumlah_contop=jumlah_contop, gambar_terakhir=image_content)
+                        self.last_save_time = current_time
+
                 ret, buffer = cv2.imencode(".jpg", output_frame)
                 frame_bytes = buffer.tobytes()
                 yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n")
