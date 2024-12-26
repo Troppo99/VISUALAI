@@ -1,21 +1,16 @@
-h1 {
-  margin-bottom: 20px;
+.content-section {
+  padding-left: 15px;
+  padding-right: 15px;
 }
 
-h2 .text-center.mb-5.px-3{
+.container {
+  padding-left: 15px !important;
+  padding-right: 15px !important;
+}
+
+h2.text-center.mb-5.px-3 {
   text-align: justify;
-  padding-left: 100px;
-}
-
-.caption {
-  text-align: center;
-  margin-top: 8px;
-  font-size: 0.9rem;
-  color: #333;
-  height: 2.5em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  padding-left: 50px;
 }
 
 .video-thumbnail {
@@ -33,4 +28,20 @@ h2 .text-center.mb-5.px-3{
   left: 0;
   width: 100%;
   height: 100%;
+  object-fit: cover;
+}
+
+.caption {
+  text-align: center;
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: #333;
+  height: 2.5em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+h1 {
+  margin-bottom: 20px;
 }
