@@ -38,11 +38,11 @@ class BroomDetector:
         self.last_final_overlap = 0
 
     def camera_config(self):
-        with open(finders.find("resources/conf/ctd_config.json"), "r") as f:
+        with open(finders.find("resources/conf/camera_config.json"), "r") as f:
             config = json.load(f)
         ip = config[self.camera_name]["ip"]
         scaled_rois = []
-        rois_path = finders.find(config[self.camera_name]["rois"])
+        rois_path = finders.find(config[self.camera_name]["bd_rois"])
         with open(rois_path, "r") as rois_file:
             original_rois = json.load(rois_file)
         for roi_group in original_rois:

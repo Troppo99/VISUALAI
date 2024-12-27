@@ -27,7 +27,7 @@ class ContopDetector:
         self.amount = 0
 
     def camera_config(self):
-        with open(finders.find("resources/conf/ctd_config.json"), "r") as f:
+        with open(finders.find("resources/conf/camera_config.json"), "r") as f:
             config = json.load(f)
         ip = config[self.camera_name]["ip"]
         return ip
