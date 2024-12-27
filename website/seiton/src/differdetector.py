@@ -1,0 +1,2 @@
+class DifferDetector:
+  pass
