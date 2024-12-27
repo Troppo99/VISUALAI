@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;300;400;700&display=swap">
   <!-- Custom CSS -->
   <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  <link rel="stylesheet" href="{% static 'seiketsu/css/styles.css' %}">
 </head>
 
 <body>
@@ -19,7 +20,7 @@
   <!-- Navbar (fixed-top) -->
   <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top shadow">
     <div class="container-fluid">
-      <a class="navbar-brand" href="#">VISUAL<span>AI</span></a>
+      <a class="navbar-brand" href="/">VISUALAI<span> 5S</span></a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
         aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
@@ -27,32 +28,22 @@
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ms-auto">
           <li class="nav-item">
-            <a class="nav-link" href="#home">Home</a>
+            <a class="nav-link" href="/">Home</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#productivity">Productivity</a>
-          </li>
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown"
-              aria-expanded="false">
-              5S
-            </a>
-            <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-              <li><a class="dropdown-item" href="#seiri">Seiri</a></li>
-              <li><a class="dropdown-item" href="#seiton">Seiton</a></li>
-              <li><a class="dropdown-item" href="#seiso">Seiso</a></li>
-              <li><a class="dropdown-item" href="#seiketsu">Seiketsu</a></li>
-              <li><a class="dropdown-item" href="#shitsuke">Shitsuke</a></li>
-            </ul>
+            <a class="nav-link" href="/seiri_page">Seiri</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#findmywo">Find My WO</a>
+            <a class="nav-link" href="/seiton_page">Seiton</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#report">Report</a>
+            <a class="nav-link" href="/seiso_page">Seiso</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#about">About</a>
+            <a class="nav-link" href="/seiketsu_page">Seiketsu</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/shitsuke_page">Shitsuke</a>
           </li>
         </ul>
       </div>
