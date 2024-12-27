@@ -4,13 +4,16 @@ from django.http import StreamingHttpResponse, Http404
 from django.contrib.staticfiles import finders
 
 CAMERA_NAMES = [
-    "FREEMETAL1",
-    "FREEMETAL2",
-    "METALDET1",
-    "FOLDING1",
-    "FOLDING2",
+    # "FREEMETAL1",
+    # "FREEMETAL2",
+    # "METALDET1",
+    # "FOLDING1",
+    # "FOLDING2",
     "FOLDING3",
     "SEWINGBACK2",
+    "CUTTING1",
+    "CUTTING2",
+    "CUTTING3",
 ]
 
 
