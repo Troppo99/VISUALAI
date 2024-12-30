@@ -1,5 +1,4 @@
-<!-- base.html -->
-{%load static %}
+{% load static %}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -29,9 +28,6 @@
           <li class="nav-item">
             <a class="nav-link" href="#home">Home</a>
           </li>
-          <li class="nav-item">
-            <a class="nav-link" href="#productivity">Productivity</a>
-          </li>
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown"
               aria-expanded="false">
@@ -44,9 +40,6 @@
               <li><a class="dropdown-item" href="#seiketsu">Seiketsu</a></li>
               <li><a class="dropdown-item" href="#shitsuke">Shitsuke</a></li>
             </ul>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="#findmywo">Find My WO</a>
           </li>
           <li class="nav-item">
             <a class="nav-link" href="#report">Report</a>
@@ -62,10 +55,13 @@
 
   <!-- Tempat konten -->
   {% block content %}
-  {% endblock %}
+  {% endblock content %}
+
+  <!-- Footer -->
   <footer class="bg-primary text-center pb-1 pt-3 text-white">
     <p>&copy; 2024 Created with <i class="bi bi-heart-fill text-danger"></i> by <a
-        href="https://id.linkedin.com/in/nana-wartana-94b226154" class="text-white fw-bold" style="text-decoration: none;">Nana Wartana</a></p>
+        href="https://id.linkedin.com/in/nana-wartana-94b226154" class="text-white fw-bold"
+        style="text-decoration: none;">Nana Wartana</a></p>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

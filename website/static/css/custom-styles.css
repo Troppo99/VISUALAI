@@ -1,3 +1,7 @@
+section {
+  scroll-margin-top: 80px;
+}
+
 body {
   scroll-behavior: smooth;
 }
@@ -8,7 +12,6 @@ body {
 
 .navbar-brand span {
   color: #0d6efd;
-  /* color: #ffd900; */
 }
 
 a.video-link {

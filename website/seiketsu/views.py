@@ -27,7 +27,7 @@ CAMERA_NAMES = [
 
 def index(request):
     cameras = CAMERA_NAMES
-    return render(request, "fives/index.html", {"cameras": cameras})
+    return render(request, "five_s/index.html", {"cameras": cameras})
 
 
 def seiketsu_feed(request, camera_name):
