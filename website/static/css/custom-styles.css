@@ -1,12 +1,14 @@
 body {
   scroll-behavior: smooth;
 }
+
 .navbar-brand {
   font-weight: bold;
 }
 
 .navbar-brand span {
   color: #0d6efd;
+  /* color: #ffd900; */
 }
 
 a.video-link {

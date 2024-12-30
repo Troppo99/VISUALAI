@@ -27,7 +27,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "five_s",
+    "fives",
     "seiketsu",
 ]
 

@@ -15,7 +15,7 @@ def print_directory_tree(root_dir, indent=""):
 
 
 def main():
-    root_folder = r"D:\NWR\datasets\contop_united"
+    root_folder = r"C:\xampp\htdocs\VISUALAI\website\templates"
     if not os.path.exists(root_folder):
         print(f"Folder sumber '{root_folder}' tidak ditemukan.")
         return
