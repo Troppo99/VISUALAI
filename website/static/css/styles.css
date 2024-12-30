@@ -1,12 +1,6 @@
 body {
-  font-family: 'Poppins', sans-serif;
   scroll-behavior: smooth;
 }
-
-.content-section {
-  padding-top: 5rem;
-}
-
 .navbar-brand {
   font-weight: bold;
 }

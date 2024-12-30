@@ -22,7 +22,7 @@ class ContopDetector:
         self.ip_camera = self.camera_config()
         self.choose_video_source()
         self.prev_frame_time = 0
-        self.model = YOLO("archives/static/models/contop1l.pt").to("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = YOLO(r"D:\NWR\run\contop\version2\weights\best.pt").to("cuda" if torch.cuda.is_available() else "cpu")
         self.model.overrides["verbose"] = False
         self.lock = threading.Lock()
         self.stop_event = threading.Event()
@@ -85,7 +85,7 @@ class ContopDetector:
             for box, mask in zip(result.boxes, result.masks.xy):
                 poly_xy = mask
                 conf = box.conf[0]
-                # class_id = self.model.names[int(box.cls[0])]
+                class_id = self.model.names[int(box.cls[0])]
                 if len(poly_xy) < 3:
                     continue
                 polygon = Polygon(poly_xy)
@@ -93,7 +93,7 @@ class ContopDetector:
                     continue
                 if conf > self.contop_confidence_threshold:
                     c = polygon.centroid
-                    segments.append((poly_xy, (c.x, c.y)))
+                    segments.append((poly_xy, (c.x, c.y), class_id))
 
         return segments
 
@@ -102,10 +102,10 @@ class ContopDetector:
         segments = self.export_frame(frame_resized)
         overlay = frame_resized.copy()
 
-        for poly_xy, (cx, cy) in segments:
+        for poly_xy, (cx, cy), label in segments:
             pts = np.array(poly_xy, np.int32).reshape((-1, 1, 2))
             cv2.fillPoly(overlay, [pts], (0, 70, 255))
-            cvzone.putTextRect(frame_resized, "Violation!", (int(cx), int(cy) - 10), scale=1, thickness=2, offset=5, colorR=(0, 70, 255), colorT=(255, 255, 255))
+            cvzone.putTextRect(frame_resized, label, (int(cx), int(cy) - 10), scale=1, thickness=2, offset=5, colorR=(0, 70, 255), colorT=(255, 255, 255))
 
         alpha = 0.5
         cv2.addWeighted(overlay, alpha, frame_resized, 1 - alpha, 0, frame_resized)
@@ -181,8 +181,8 @@ class ContopDetector:
 if __name__ == "__main__":
     ctd = ContopDetector(
         contop_confidence_threshold=0,
-        camera_name="FREEMETAL1",
-        # video_source=r"archives/static/videos/contop testing.mp4",
+        camera_name="FREEMETAL2",
+        video_source=r"website/static/videos/seiketsu/1230(1).mp4",
         window_size=(640, 360),
     )
     ctd.main()
