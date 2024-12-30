@@ -7,11 +7,7 @@ from . import views
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", views.index, name="index"),
-    path("seiri_page/", include("seiri.urls")),
-    path("seiton_page/", include("seiton.urls")),
-    path("seiso_page/", include("seiso.urls")),
     path("seiketsu_page/", include("seiketsu.urls")),
-    # path("shitsuke_page/", include("shitsuke.urls")),
 ]
 
 
