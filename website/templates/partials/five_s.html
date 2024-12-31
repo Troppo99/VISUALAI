@@ -3,44 +3,19 @@
   <div class="container-fluid p-0 m-0">
     <h2 class="text-center my-0 mb-3 text-white">AI Streaming</h2>
     <div class="row justify-content-center gx-0 gy-0">
+      {% for camera in cameras %}
       <div class="col-md-3 p-0 m-0">
-        <video width="100%" height="auto" autoplay loop muted>
-          <source src="{% static 'videos/vid_seiketsu.mp4' %}" type="video/mp4">
-        </video>
+        <div class="video-thumbnail">
+          <img class="img-fluid" src="{% url 'camera_feed' camera %}" alt="Live Feed {{ camera }}" />
+        </div>
+        <div class="caption text-center text-white">
+          {{ camera }}
+        </div>
       </div>
-      <div class="col-md-3 p-0 m-0">
-        <video width="100%" height="auto" autoplay loop muted>
-          <source src="{% static 'videos/vid_seiketsu.mp4' %}" type="video/mp4">
-        </video>
-      </div>
-      <div class="col-md-3 p-0 m-0">
-        <video width="100%" height="auto" autoplay loop muted>
-          <source src="{% static 'videos/vid_seiketsu.mp4' %}" type="video/mp4">
-        </video>
-      </div>
-      <div class="col-md-3 p-0 m-0">
-        <video width="100%" height="auto" autoplay loop muted>
-          <source src="{% static 'videos/vid_seiketsu.mp4' %}" type="video/mp4">
-        </video>
-      </div>
-      <div class="col-md-3 p-0 m-0">
-        <video width="100%" height="auto" autoplay loop muted>
-          <source src="{% static 'videos/vid_seiketsu.mp4' %}" type="video/mp4">
-        </video>
-      </div>
-      <div class="col-md-3 p-0 m-0">
-        <video width="100%" height="auto" autoplay loop muted>
-          <source src="{% static 'videos/vid_seiketsu.mp4' %}" type="video/mp4">
-        </video>
-      </div>
-      <div class="col-md-3 p-0 m-0">
-        <video width="100%" height="auto" autoplay loop muted>
-          <source src="{% static 'videos/vid_seiketsu.mp4' %}" type="video/mp4">
-        </video>
-      </div>
+      {% endfor %}
     </div>
   </div>
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320">
-    <path fill="#ffffff" fill-opacity="1" d="M0,0L288,192L576,160L864,96L1152,32L1440,160L1440,320L1152,320L864,320L576,320L288,320L0,320Z"></path>
+    <path fill="#ffffff" d="M0,0L288,192L576,160L864,96L1152,32L1440,160L1440,320L1152,320L864,320L576,320L288,320L0,320Z"></path>
   </svg>
 </section>

@@ -1,3 +1,4 @@
+# views.py
 from django.shortcuts import render
 from .src.contopdetector import ContopDetector
 from django.http import StreamingHttpResponse, Http404
