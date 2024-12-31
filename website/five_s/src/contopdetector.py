@@ -3,7 +3,7 @@ from ultralytics import YOLO
 from shapely.geometry import Polygon
 from django.contrib.staticfiles import finders
 from django.utils import timezone
-from seiketsu.models import ContopCounting
+from five_s.models import ContopCounting
 from django.core.files.base import ContentFile
 from datetime import datetime
 
