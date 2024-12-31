@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class SeiketsuConfig(AppConfig):
+class FiveSConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "seiketsu"
+    name = "five_s"
