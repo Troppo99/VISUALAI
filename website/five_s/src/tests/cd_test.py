@@ -12,7 +12,6 @@ import queue
 import math
 from shapely.geometry import Polygon, box
 from shapely.ops import unary_union
-from shapely.geometry import JOIN_STYLE
 import json
 
 
@@ -24,26 +23,26 @@ class CarpalDetector:
         self.window_size = window_size
         self.process_size = (640, 640)
         self.rois, self.ip_camera = self.camera_config()
+        if len(self.rois) > 1:
+            self.union_roi = unary_union(self.rois)
+        elif len(self.rois) == 1:
+            self.union_roi = self.rois[0]
+        else:
+            self.union_roi = None
+
+        self.trail_map_polygon = Polygon()
+        self.trail_map_mask = np.zeros((self.process_size[1], self.process_size[0], 3), dtype=np.uint8)
+        self.start_run_time = time.time()
+        self.last_detection_time = None
+        self.trail_map_start_time = None
+        self.capture_done = False
+        self.frame_queue = None
         self.choose_video_source()
         self.prev_frame_time = 0
         self.model = YOLO(r"C:\xampp\htdocs\VISUALAI\website\static\resources\models\yolo11l-pose.pt").to("cuda")
         self.model.overrides["verbose"] = False
         self.stop_event = threading.Event()
-
-        self.start_time = None
-        self.carpal_absence_timer_start = None
-        self.first_green_time = None
-        self.total_roi_area = sum(roi.area for roi in self.rois) if self.rois else 0
-        self.union_polygon = None
-        self.total_area = 0
-        self.last_overlap_time = time.time()
-        self.area_cleared = False
-        self.start_no_overlap_time_high = None
-        self.start_no_overlap_time_low = None
-        self.detection_paused = False
-        self.detection_resume_time = None
-        self.detection_pause_duration = 10
-        self.timestamp_start = None
+        self.pairs_human = [(0, 1), (0, 2), (1, 2), (2, 4), (1, 3), (4, 6), (3, 5), (5, 6), (6, 8), (8, 10), (5, 7), (7, 9), (6, 12), (12, 11), (11, 5), (12, 14), (14, 16), (11, 13), (13, 15)]
 
     def camera_config(self):
         with open(r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf\camera_config.json", "r") as f:
@@ -78,12 +77,10 @@ class CarpalDetector:
     def choose_video_source(self):
         if self.video_source is None:
             self.frame_queue = queue.Queue(maxsize=10)
-            self.frame_thread = None
             self.video_fps = None
             self.is_local_video = False
             self.video_source = f"rtsp://admin:oracle2015@{self.ip_camera}:554/Streaming/Channels/1"
         else:
-            self.video_source = self.video_source
             if os.path.isfile(self.video_source):
                 self.is_local_video = True
                 cap = cv2.VideoCapture(self.video_source)
@@ -94,7 +91,6 @@ class CarpalDetector:
             else:
                 self.is_local_video = False
                 self.video_fps = None
-                exit()
 
     def capture_frame(self):
         while not self.stop_event.is_set():
@@ -115,295 +111,195 @@ class CarpalDetector:
                     pass
             cap.release()
 
-    def export_frame(self, results, color, pairs):
-        points = []
-        coords = []
-        keypoint_positions = []
-        confidence_threshold = self.confidence_threshold
-        for result in results:
-            keypoints_data = result.keypoints
-            if keypoints_data is not None and keypoints_data.xy is not None and keypoints_data.conf is not None:
-                if keypoints_data.shape[0] > 0:
-                    keypoints_array = keypoints_data.xy.cpu().numpy()
-                    keypoints_conf = keypoints_data.conf.cpu().numpy()
-                    for keypoints_per_object, keypoints_conf_per_object in zip(keypoints_array, keypoints_conf):
-                        keypoints_list = []
-                        for kp, kp_conf in zip(keypoints_per_object, keypoints_conf_per_object):
-                            if kp_conf >= confidence_threshold:
-                                x, y = kp[0], kp[1]
-                                keypoints_list.append((int(x), int(y)))
-                            else:
-                                keypoints_list.append(None)
-                        if len(keypoints_list) > 9 and keypoints_list[7] and keypoints_list[9]:
-                            kp7 = keypoints_list[7]
-                            kp9 = keypoints_list[9]
-                            vx = kp9[0] - kp7[0]
-                            vy = kp9[1] - kp7[1]
-                            norm = (vx**2 + vy**2) ** 0.5
-                            if norm != 0:
-                                vx /= norm
-                                vy /= norm
-                                extension_length = 20
-                                x_new = int(kp9[0] + vx * extension_length)
-                                y_new = int(kp9[1] + vy * extension_length)
-                                keypoints_list[9] = (x_new, y_new)
-                        if len(keypoints_list) > 10 and keypoints_list[8] and keypoints_list[10]:
-                            kp8 = keypoints_list[8]
-                            kp10 = keypoints_list[10]
-                            vx = kp10[0] - kp8[0]
-                            vy = kp10[1] - kp8[1]
-                            norm = (vx**2 + vy**2) ** 0.5
-                            if norm != 0:
-                                vx /= norm
-                                vy /= norm
-                                extension_length = 20
-                                x_new = int(kp10[0] + vx * extension_length)
-                                y_new = int(kp10[1] + vy * extension_length)
-                                keypoints_list[10] = (x_new, y_new)
-                        keypoint_positions.append(keypoints_list)
-                        for point in keypoints_list:
-                            if point is not None:
-                                points.append(point)
-                        for i, j in pairs:
-                            if i < len(keypoints_list) and j < len(keypoints_list):
-                                if keypoints_list[i] is not None and keypoints_list[j] is not None:
-                                    coords.append((keypoints_list[i], keypoints_list[j], color))
-            else:
-                continue
-        return points, coords, keypoint_positions
-
-    def keypoint_to_polygon(self, x, y, size=5):
-        x1 = x - size
-        y1 = y - size
-        x2 = x + size
-        y2 = y + size
-        return box(x1, y1, x2, y2)
-
-    def update_union_polygon(self, new_polygons):
-        if new_polygons:
-            if self.union_polygon is None:
-                self.union_polygon = unary_union(new_polygons)
-            else:
-                self.union_polygon = unary_union([self.union_polygon] + new_polygons)
-            self.union_polygon = self.union_polygon.simplify(tolerance=0.5, preserve_topology=True)
-            if not self.union_polygon.is_valid:
-                self.union_polygon = self.union_polygon.buffer(0, join_style=JOIN_STYLE.mitre)
-            self.total_area = self.union_polygon.area
-
-    def draw_segments(self, frame):
-        overlay = frame.copy()
-        if self.union_polygon is not None and not self.union_polygon.is_empty:
-            if self.union_polygon.geom_type == "Polygon":
-                coords = np.array(self.union_polygon.exterior.coords, np.int32)
-                coords = coords.reshape((-1, 1, 2))
-                cv2.fillPoly(overlay, [coords], (0, 255, 0))
-            elif self.union_polygon.geom_type == "MultiPolygon":
-                for poly in self.union_polygon.geoms:
-                    if poly.is_empty:
-                        continue
-                    coords = np.array(poly.exterior.coords, np.int32)
-                    coords = coords.reshape((-1, 1, 2))
-                    cv2.fillPoly(overlay, [coords], (0, 255, 0))
-        cv2.addWeighted(overlay, 0.5, frame, 0.5, 0, frame)
-
-    def process_frame(self, frame, current_time, pairs_human):
-        frame_resized = cv2.resize(frame, (self.process_size))
-        if self.detection_paused:
-            if current_time >= self.detection_resume_time:
-                self.detection_paused = False
-                print(f"C`{self.camera_name} : Resuming detection after {self.detection_pause_duration}-second pause.")
-            else:
-                self.draw_rois(frame_resized)
-                return frame_resized
+    def export_frame(self, frame):
         with torch.no_grad():
-            results = self.model(frame_resized, stream=True, imgsz=640)
-        points, coords, keypoint_positions = self.export_frame(results, (0, 255, 0), pairs_human)
-        new_polygons = []
-        overlap_detected = False
-        for keypoints_list in keypoint_positions:
-            for idx in [9, 10]:
-                if idx < len(keypoints_list):
-                    kp = keypoints_list[idx]
-                    if kp is not None:
-                        kp_x, kp_y = kp
-                        kp_polygon = self.keypoint_to_polygon(kp_x, kp_y, size=5)
-                        for roi_polygon in self.rois:
-                            if kp_polygon.intersects(roi_polygon):
-                                intersection = kp_polygon.intersection(roi_polygon)
-                                if not intersection.is_empty:
-                                    overlap_detected = True
-                                    new_polygons.append(intersection)
-        if overlap_detected and self.timestamp_start is None:
-            self.timestamp_start = datetime.now()
-        self.update_union_polygon(new_polygons)
-        percentage = (self.total_area / self.total_roi_area) * 100 if self.total_roi_area > 0 else 0
-        self.draw_segments(frame_resized)
-        self.draw_rois(frame_resized)
-        if keypoint_positions:
-            for x, y, color in coords:
-                cv2.line(frame_resized, x, y, color, 2)
-            for keypoints_list in keypoint_positions:
-                for idx, point in enumerate(keypoints_list):
-                    if point is not None:
-                        if idx == 9 or idx == 10:
-                            radius = 10
-                        else:
-                            radius = 3
-                        cv2.circle(frame_resized, point, radius, (0, 255, 255), -1)
-        cvzone.putTextRect(
-            frame_resized,
-            f"Percentage of Overlap: {percentage:.2f}%",
-            (10, self.process_size[1] - 50),
-            scale=1,
-            thickness=2,
-            offset=5,
-        )
-        cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, self.process_size[1] - 75), scale=1, thickness=2, offset=5)
-        self.check_conditions(percentage, overlap_detected, current_time, frame_resized)
-        return frame_resized
+            results = self.model(frame, stream=True, imgsz=self.process_size[0], task="pose")
 
-    def check_conditions(self, percentage, overlap_detected, current_time, frame_resized):
-        if percentage >= 90:
-            self.union_polygon = None
-            self.total_area = 0
-            print(f"C`{self.camera_name} : Percentage >= 90%")
-            self.timestamp_start = None
-            self.detection_paused = True
-            self.detection_resume_time = current_time + self.detection_pause_duration
-            self.start_no_overlap_time_high = None
-            self.start_no_overlap_time_low = None
-            return
-        elif percentage >= 50:
-            if not overlap_detected:
-                if self.start_no_overlap_time_low is None:
-                    self.start_no_overlap_time_low = current_time
-                elif current_time - self.start_no_overlap_time_low >= 60:
-                    self.union_polygon = None
-                    self.total_area = 0
-                    print(f"C`{self.camera_name} : Percentage >= 50%")
-                    self.start_no_overlap_time_low = None
-            else:
-                self.start_no_overlap_time_low = None
-        elif percentage >= 5:
-            if not overlap_detected:
-                if self.start_no_overlap_time_low is None:
-                    self.start_no_overlap_time_low = current_time
-                elif current_time - self.start_no_overlap_time_low >= 30:
-                    self.union_polygon = None
-                    self.total_area = 0
-                    print(f"C`{self.camera_name} : Percentage >= 5%")
-                    self.start_no_overlap_time_low = None
-            else:
-                self.start_no_overlap_time_low = None
+        keypoint_positions = []
+        for result in results:
+            if result.keypoints is None:
+                continue
+            if not hasattr(result.keypoints, "conf") or result.keypoints.conf is None:
+                continue
+
+            kp_tensor = result.keypoints.xy.cpu().numpy()
+            kp_conf = result.keypoints.conf.cpu().numpy()
+            for kp_arr, kp_c in zip(kp_tensor, kp_conf):
+                single_person_kps = []
+                for (x, y), c in zip(kp_arr, kp_c):
+                    if c >= self.confidence_threshold:
+                        single_person_kps.append((int(x), int(y)))
+                    else:
+                        single_person_kps.append(None)
+                keypoint_positions.append(single_person_kps)
+
+        return keypoint_positions
+
+    def process_frame(self, frame):
+        frame_resized = cv2.resize(frame, self.process_size)
+        output_frame = frame_resized.copy()
+        self.draw_rois(output_frame)
+        keypoint_positions = self.export_frame(output_frame)
+        detected = False
+        for kp_list in keypoint_positions:
+            for idx in [9, 10]:
+                if idx < len(kp_list) and kp_list[idx] is not None:
+                    (x, y) = kp_list[idx]
+                    kp_polygon = box(x - 10, y - 10, x + 10, y + 10)
+                    if self.union_roi is not None:
+                        current_area = kp_polygon.intersection(self.union_roi)
+                    else:
+                        current_area = kp_polygon
+
+                    if not current_area.is_empty:
+                        new_area = current_area.difference(self.trail_map_polygon)
+                        if not new_area.is_empty:
+                            self.trail_map_polygon = self.trail_map_polygon.union(new_area)
+                            self.draw_polygon_on_mask(new_area, self.trail_map_mask)
+                        detected = True
+
+        overlap_percentage = 0
+        if self.union_roi and not self.union_roi.is_empty:
+            overlap_percentage = (self.trail_map_polygon.area / self.union_roi.area) * 100
+
+        current_time = time.time()
+        if detected:
+            self.last_detection_time = current_time
+            if overlap_percentage >= 50 and self.trail_map_start_time is None:
+                self.trail_map_start_time = current_time
         else:
-            if not overlap_detected:
-                if self.start_no_overlap_time_low is None:
-                    self.start_no_overlap_time_low = current_time
-                elif current_time - self.start_no_overlap_time_low >= 5:
-                    self.union_polygon = None
-                    self.total_area = 0
-                    print(f"C`{self.camera_name} : Percentage < 5%")
-                    self.start_no_overlap_time_low = None
+            if self.last_detection_time is None:
+                time_since_last_det = current_time - self.start_run_time
             else:
-                self.start_no_overlap_time_low = None
-        if self.detection_paused:
-            if current_time >= self.detection_resume_time:
-                self.detection_paused = False
-                print(f"C`{self.camera_name} : Resuming detection after {self.detection_pause_duration}-second pause.")
+                time_since_last_det = current_time - self.last_detection_time
+
+            if overlap_percentage < 10 and time_since_last_det > 10:
+                self.reset_trail_map()
+            elif overlap_percentage < 50 and time_since_last_det > 60:
+                self.reset_trail_map()
+
+        if overlap_percentage >= 50 and self.trail_map_start_time is not None:
+            if (current_time - self.trail_map_start_time) > 60 and not self.capture_done:
+                print("capture, save, and send (pose version)")
+                self.capture_done = True
+
+        alpha = 0.5
+        # cv2.addWeighted(self.trail_map_mask, alpha, output_frame, 1 - alpha, 0, output_frame)
+        cv2.addWeighted(output_frame, 1.0, self.trail_map_mask, 1 - alpha, 0, output_frame)
+        cvzone.putTextRect(output_frame, f"Overlap: {overlap_percentage:.2f}%", (10, 30), scale=1, thickness=2, offset=5)
+        return output_frame
+
+    def draw_polygon_on_mask(self, polygon, mask, color=(0, 255, 0)):
+        if polygon.is_empty:
+            return
+        if polygon.geom_type == "Polygon":
+            polygons = [polygon]
+        elif polygon.geom_type == "MultiPolygon":
+            polygons = polygon.geoms
+        else:
+            polygons = []
+
+        for poly in polygons:
+            if not poly.is_empty:
+                pts = np.array(poly.exterior.coords, np.int32)
+                pts = pts.reshape((-1, 1, 2))
+                cv2.fillPoly(mask, [pts], color)
+
+    def reset_trail_map(self):
+        print("Reset trail map.")
+        self.trail_map_polygon = Polygon()
+        self.trail_map_mask = np.zeros((self.process_size[1], self.process_size[0], 3), dtype=np.uint8)
+        self.trail_map_start_time = None
+        self.capture_done = False
 
     def main(self):
-        pairs_human = [
-            (0, 1),
-            (0, 2),
-            (1, 2),
-            (2, 4),
-            (1, 3),
-            (4, 6),
-            (3, 5),
-            (5, 6),
-            (6, 8),
-            (8, 10),
-            (5, 7),
-            (7, 9),
-            (6, 12),
-            (12, 11),
-            (11, 5),
-            (12, 14),
-            (14, 16),
-            (11, 13),
-            (13, 15),
-        ]
+        # state = ""
         skip_frames = 2
         frame_count = 0
-        window_name = f"Carpal Detection"
+        window_name = f"Carpal Detection: {self.camera_name}"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(window_name, self.window_size)
-        if self.video_fps is not None:
-            cap = cv2.VideoCapture(self.video_source)
-            frame_delay = int(1000 / self.video_fps)
-            while cap.isOpened():
-                start_time = time.time()
-                ret, frame = cap.read()
-                if not ret:
-                    print(f"C`{self.camera_name} : End of video file or cannot read the frame.")
-                    break
-                frame_count += 1
-                if frame_count % skip_frames != 0:
-                    continue
-                current_time = time.time()
-                time_diff = current_time - self.prev_frame_time
-                if time_diff > 0:
-                    self.fps = 1 / time_diff
-                else:
-                    self.fps = 0
-                self.prev_frame_time = current_time
-                frame_resized = self.process_frame(frame, current_time, pairs_human)
-                cv2.imshow(window_name, frame_resized)
-                key = cv2.waitKey(1) & 0xFF
-                if key == ord("n"):
-                    break
-                elif key == ord("s"):
-                    self.show_text = not self.show_text
-                processing_time = (time.time() - start_time) * 1000
-                adjusted_delay = max(int(frame_delay - processing_time), 1)
-            cap.release()
-            cv2.destroyAllWindows()
-        else:
-            self.frame_thread = threading.Thread(target=self.capture_frame)
-            self.frame_thread.daemon = True
-            self.frame_thread.start()
-            while True:
-                if self.stop_event.is_set():
-                    break
-                try:
-                    frame = self.frame_queue.get(timeout=5)
-                except queue.Empty:
-                    continue
-                frame_count += 1
-                if frame_count % skip_frames != 0:
-                    continue
-                current_time = time.time()
-                time_diff = current_time - self.prev_frame_time
-                if time_diff > 0:
-                    self.fps = 1 / time_diff
-                else:
-                    self.fps = 0
-                self.prev_frame_time = current_time
-                frame_resized = self.process_frame(frame, current_time, pairs_human)
-                cv2.imshow(window_name, frame_resized)
-                key = cv2.waitKey(1) & 0xFF
-                if key == ord("n"):
-                    self.stop_event.set()
-                    break
-                elif key == ord("s"):
-                    self.show_text = not self.show_text
-            cv2.destroyAllWindows()
-            self.frame_thread.join()
+
+        try:
+            if self.video_fps is None:
+                self.frame_thread = threading.Thread(target=self.capture_frame, daemon=True)
+                self.frame_thread.start()
+                while not self.stop_event.is_set():
+                    try:
+                        frame = self.frame_queue.get(timeout=1)
+                    except queue.Empty:
+                        continue
+                    frame_count += 1
+                    if frame_count % skip_frames != 0:
+                        continue
+                    current_time = time.time()
+                    time_diff = current_time - self.prev_frame_time
+                    self.fps = 1 / time_diff if time_diff > 0 else 0
+                    self.prev_frame_time = current_time
+                    output_frame = self.process_frame(frame)
+                    cvzone.putTextRect(output_frame, f"FPS: {int(self.fps)}", (10, 60), scale=1, thickness=2, offset=5)
+                    cv2.imshow(window_name, output_frame)
+                    key = cv2.waitKey(1) & 0xFF
+                    if key == ord("n") or key == ord("N"):
+                        print("Manual stop detected.")
+                        self.stop_event.set()
+                        break
+                cv2.destroyAllWindows()
+                if self.frame_thread.is_alive():
+                    self.frame_thread.join()
+            else:
+                cap = cv2.VideoCapture(self.video_source)
+                if not cap.isOpened():
+                    print("Failed to open video source:", self.video_source)
+                    return
+
+                video_fps = self.video_fps if self.video_fps else 25
+                frame_delay = max(int(1000 / video_fps), 1)
+                while cap.isOpened() and not self.stop_event.is_set():
+                    start_time = time.time()
+                    ret, frame = cap.read()
+                    if not ret:
+                        print("Video ended.")
+                        break
+                    frame_count += 1
+                    if frame_count % skip_frames != 0:
+                        continue
+                    current_time = time.time()
+                    time_diff = current_time - self.prev_frame_time
+                    self.fps = 1 / time_diff if time_diff > 0 else 0
+                    self.prev_frame_time = current_time
+                    output_frame = self.process_frame(frame)
+                    cvzone.putTextRect(output_frame, f"FPS: {int(self.fps)}", (10, 60), scale=1, thickness=2, offset=5)
+                    cv2.imshow(window_name, output_frame)
+                    processing_time = (time.time() - start_time) * 1000
+                    adjusted_delay = max(int(frame_delay - processing_time), 1)
+                    key = cv2.waitKey(adjusted_delay) & 0xFF
+                    if key == ord("n") or key == ord("N"):
+                        print("Manual stop detected.")
+                        self.stop_event.set()
+                        break
+                cap.release()
+                cv2.destroyAllWindows()
+
+        finally:
+            pass
+            # if final_overlap >= 50:
+            #     state = "Menyapu selesai"
+            # elif final_overlap >= 30:
+            #     state = "Menyapu tidak selesai"
+            # else:
+            #     state = "Tidak menyapu"
+            # print(state)
+            # if "frame_resized" in locals():
+            #     DataHandler().save_data(frame_resized, final_overlap, self.camera_name, insert=True)
+            # else:
+            #     print("No frame to save.")
 
 
 if __name__ == "__main__":
     detector_args = {
         "camera_name": "SEWING1",
+        # "video_source": r"C:\xampp\htdocs\VISUALAI\archives\static\videos\bd_test.mp4",
     }
 
     detector = CarpalDetector(**detector_args)
