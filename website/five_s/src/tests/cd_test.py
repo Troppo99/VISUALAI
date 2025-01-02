@@ -333,9 +333,9 @@ class CarpalDetector:
             (11, 13),
             (13, 15),
         ]
-        process_every_n_frames = 2
+        skip_frames = 2
         frame_count = 0
-        window_name = f"CARPAL : {self.camera_name}"
+        window_name = f"Carpal Detection"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(window_name, self.window_size)
         if self.video_fps is not None:
@@ -348,7 +348,7 @@ class CarpalDetector:
                     print(f"C`{self.camera_name} : End of video file or cannot read the frame.")
                     break
                 frame_count += 1
-                if frame_count % process_every_n_frames != 0:
+                if frame_count % skip_frames != 0:
                     continue
                 current_time = time.time()
                 time_diff = current_time - self.prev_frame_time
@@ -380,7 +380,7 @@ class CarpalDetector:
                 except queue.Empty:
                     continue
                 frame_count += 1
-                if frame_count % process_every_n_frames != 0:
+                if frame_count % skip_frames != 0:
                     continue
                 current_time = time.time()
                 time_diff = current_time - self.prev_frame_time

@@ -233,7 +233,7 @@ class BroomDetector:
         frame_count = 0
         window_name = "Brooming Detection"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-        cv2.resizeWindow(window_name, self.window_size[0], self.window_size[1])
+        cv2.resizeWindow(window_name, self.window_size)
         final_overlap = 0
 
         try:
