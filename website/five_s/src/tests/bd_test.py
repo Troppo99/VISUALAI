@@ -305,9 +305,6 @@ class BroomDetector:
             else:
                 print("No frame to save.")
 
-    def stop(self):
-        self.stop_event.set()
-
 
 class DataHandler:
     def __init__(self, host="10.5.0.2", user="robot", password="robot123", database="visualai_db", table="cleaning", port=3307):
