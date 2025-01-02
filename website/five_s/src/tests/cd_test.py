@@ -43,6 +43,7 @@ class CarpalDetector:
         self.model.overrides["verbose"] = False
         self.stop_event = threading.Event()
         self.pairs_human = [(0, 1), (0, 2), (1, 2), (2, 4), (1, 3), (4, 6), (3, 5), (5, 6), (6, 8), (8, 10), (5, 7), (7, 9), (6, 12), (12, 11), (11, 5), (12, 14), (14, 16), (11, 13), (13, 15)]
+        self.final_overlap = 0
 
     def camera_config(self):
         with open(r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf\camera_config.json", "r") as f:
@@ -162,6 +163,7 @@ class CarpalDetector:
         if self.union_roi and not self.union_roi.is_empty:
             overlap_percentage = (self.trail_map_polygon.area / self.union_roi.area) * 100
 
+        self.final_overlap = overlap_percentage
         current_time = time.time()
         if detected:
             self.last_detection_time = current_time
@@ -184,7 +186,6 @@ class CarpalDetector:
                 self.capture_done = True
 
         alpha = 0.5
-        # cv2.addWeighted(self.trail_map_mask, alpha, output_frame, 1 - alpha, 0, output_frame)
         cv2.addWeighted(output_frame, 1.0, self.trail_map_mask, 1 - alpha, 0, output_frame)
         cvzone.putTextRect(output_frame, f"Overlap: {overlap_percentage:.2f}%", (10, 30), scale=1, thickness=2, offset=5)
         return output_frame
@@ -213,7 +214,6 @@ class CarpalDetector:
         self.capture_done = False
 
     def main(self):
-        # state = ""
         skip_frames = 2
         frame_count = 0
         window_name = f"Carpal Detection: {self.camera_name}"
@@ -270,9 +270,9 @@ class CarpalDetector:
                     self.prev_frame_time = current_time
                     output_frame = self.process_frame(frame)
                     cvzone.putTextRect(output_frame, f"FPS: {int(self.fps)}", (10, 60), scale=1, thickness=2, offset=5)
-                    cv2.imshow(window_name, output_frame)
                     processing_time = (time.time() - start_time) * 1000
                     adjusted_delay = max(int(frame_delay - processing_time), 1)
+                    cv2.imshow(window_name, output_frame)
                     key = cv2.waitKey(adjusted_delay) & 0xFF
                     if key == ord("n") or key == ord("N"):
                         print("Manual stop detected.")
@@ -282,18 +282,15 @@ class CarpalDetector:
                 cv2.destroyAllWindows()
 
         finally:
-            pass
-            # if final_overlap >= 50:
-            #     state = "Menyapu selesai"
-            # elif final_overlap >= 30:
-            #     state = "Menyapu tidak selesai"
-            # else:
-            #     state = "Tidak menyapu"
-            # print(state)
-            # if "frame_resized" in locals():
-            #     DataHandler().save_data(frame_resized, final_overlap, self.camera_name, insert=True)
-            # else:
-            #     print("No frame to save.")
+            final_overlap = self.final_overlap
+            if final_overlap >= 50:
+                state = "Mengelap kaca selesai"
+            elif final_overlap >= 30:
+                state = "Mengelap kaca tidak selesai"
+            else:
+                state = "Tidak Mengelap kaca"
+
+            print(f"[{self.camera_name}] Final overlap: {final_overlap:.2f}%, State: {state}")
 
 
 if __name__ == "__main__":
