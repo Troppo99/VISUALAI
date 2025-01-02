@@ -15,7 +15,7 @@ class BroomDetector:
         self.stop_event = threading.Event()
         self.lock = threading.Lock()
         self.prev_frame_time = 0
-        self.model = YOLO(finders.find("resources/models/broom6l.pt")).to("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = YOLO(finders.find("resources/models/bd6l.pt")).to("cuda" if torch.cuda.is_available() else "cpu")
         self.model.overrides["verbose"] = False
         self.rois, self.ip_camera = self.camera_config()
         self.choose_video_source()
