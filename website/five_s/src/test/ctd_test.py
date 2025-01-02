@@ -22,7 +22,7 @@ class ContopDetector:
         self.ip_camera = self.camera_config()
         self.choose_video_source()
         self.prev_frame_time = 0
-        self.model = YOLO(r"D:\NWR\run\contop\version2\weights\best.pt").to("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = YOLO("website/static/resources/models/ctd2l.pt").to("cuda" if torch.cuda.is_available() else "cpu")
         self.model.overrides["verbose"] = False
         self.lock = threading.Lock()
         self.stop_event = threading.Event()
@@ -85,7 +85,16 @@ class ContopDetector:
             for box, mask in zip(result.boxes, result.masks.xy):
                 poly_xy = mask
                 conf = box.conf[0]
+                label = []
                 class_id = self.model.names[int(box.cls[0])]
+                if class_id == "CONTOP":
+                    label.append(("Kontainer tidak ditutup", ((0, 70, 255))))
+                elif class_id == "TABLE_WITH_OBJECTS":
+                    label.append(("Meja tidak dibereskan", ((0, 70, 255))))
+                elif class_id == "CONTOP_WITH_COVER":
+                    label.append(("Kontainer ditutup", ((0, 255, 70))))
+                elif class_id == "TABLE":
+                    label.append(("Meja dibereskan", ((0, 255, 70))))
                 if len(poly_xy) < 3:
                     continue
                 polygon = Polygon(poly_xy)
@@ -93,24 +102,38 @@ class ContopDetector:
                     continue
                 if conf > self.contop_confidence_threshold:
                     c = polygon.centroid
-                    segments.append((poly_xy, (c.x, c.y), class_id))
+                    segments.append((poly_xy, (c.x, c.y), label))
 
         return segments
 
     def process_frame(self, frame):
-        frame_resized = cv2.resize(frame, self.process_size)
-        segments = self.export_frame(frame_resized)
-        overlay = frame_resized.copy()
+        frame_processed = cv2.resize(frame, self.process_size)
+        segments = self.export_frame(frame_processed)
+        overlay = frame_processed.copy()
 
         for poly_xy, (cx, cy), label in segments:
+            if not label:
+                continue
+
+            text, color_fill = label[0]
             pts = np.array(poly_xy, np.int32).reshape((-1, 1, 2))
-            cv2.fillPoly(overlay, [pts], (0, 70, 255))
-            cvzone.putTextRect(frame_resized, label, (int(cx), int(cy) - 10), scale=1, thickness=2, offset=5, colorR=(0, 70, 255), colorT=(255, 255, 255))
+            cv2.fillPoly(overlay, [pts], color_fill)
 
         alpha = 0.5
-        cv2.addWeighted(overlay, alpha, frame_resized, 1 - alpha, 0, frame_resized)
+        cv2.addWeighted(overlay, alpha, frame_processed, 1 - alpha, 0, frame_processed)
+        frame_display = cv2.resize(frame_processed, self.window_size)
 
-        return frame_resized
+        for poly_xy, (cx, cy), label in segments:
+            if not label:
+                continue
+
+            text, color_fill = label[0]
+            scaled_cx = int(cx * self.window_size[0] / self.process_size[0])
+            scaled_cy = int(cy * self.window_size[1] / self.process_size[1])
+
+            cvzone.putTextRect(frame_display, text, (scaled_cx, scaled_cy - 10), scale=0.75, thickness=1, offset=5, colorR=color_fill, colorT=(255, 255, 255))
+
+        return frame_display
 
     def main(self):
         skip_frames = 2
