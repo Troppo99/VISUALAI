@@ -322,13 +322,15 @@ class AnomalyDetection:
 
 
 def main():
-    config_path = "sources/AlFaruq/camera_conf.json"
+    config_path = r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf\camera_config.json"
     with open(config_path, "r") as f:
         config = json.load(f)
     office_key = "CUTTING1"
-    reference_filename = config[office_key]["reference_filename"]
-    ip_camera = config[office_key]["ip_camera"]
-    rois = config[office_key]["rois"]
+    reference_filename = config[office_key]["dd_reference"]
+    ip_camera = config[office_key]["ip"]
+    dd_rois_path = config[office_key]["dd_rois"]
+    with open(dd_rois_path, "r") as f_rois:
+        rois = json.load(f_rois)
 
     try:
         ad = AnomalyDetection(video_source="rtsp", rois=rois, reference_filename=reference_filename, ip_camera=ip_camera)
