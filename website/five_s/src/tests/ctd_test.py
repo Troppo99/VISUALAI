@@ -1,20 +1,11 @@
-import os
-import cv2
+import os, cv2, torch, cvzone, time, threading, queue, math, numpy as np, json
 from ultralytics import YOLO
-import torch
-import cvzone
-import time
-import threading
-import queue
-import math
-import numpy as np
 from shapely.geometry import Polygon
-import json
 
 
 class ContopDetector:
-    def __init__(self, contop_confidence_threshold=0.5, video_source=None, camera_name=None, window_size=(320, 240)):
-        self.contop_confidence_threshold = contop_confidence_threshold
+    def __init__(self, confidence_threshold=0.5, video_source=None, camera_name=None, window_size=(320, 240)):
+        self.confidence_threshold = confidence_threshold
         self.video_source = video_source
         self.camera_name = camera_name
         self.window_size = window_size
@@ -28,11 +19,9 @@ class ContopDetector:
         self.stop_event = threading.Event()
 
     def camera_config(self):
-        with open("archives/static/data/ctd_config.json", "r") as f:
+        with open(r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf\camera_config.json", "r") as f:
             config = json.load(f)
         ip = config[self.camera_name]["ip"]
-        if not ip:
-            raise ValueError(f"Camera name '{self.camera_name}' not found in configuration.")
         return ip
 
     def choose_video_source(self):
@@ -53,7 +42,6 @@ class ContopDetector:
             else:
                 self.is_local_video = False
                 self.video_fps = None
-                raise ValueError(f"Video source '{self.video_source}' is not a valid file.")
 
     def capture_frame(self):
         while not self.stop_event.is_set():
@@ -85,24 +73,15 @@ class ContopDetector:
             for box, mask in zip(result.boxes, result.masks.xy):
                 poly_xy = mask
                 conf = box.conf[0]
-                label = []
-                class_id = self.model.names[int(box.cls[0])]
-                if class_id == "CONTOP":
-                    label.append(("Kontainer tidak ditutup", ((0, 70, 255))))
-                elif class_id == "TABLE_WITH_OBJECTS":
-                    label.append(("Meja tidak dibereskan", ((0, 70, 255))))
-                elif class_id == "CONTOP_WITH_COVER":
-                    label.append(("Kontainer ditutup", ((0, 255, 70))))
-                elif class_id == "TABLE":
-                    label.append(("Meja dibereskan", ((0, 255, 70))))
+                # class_id = self.model.names[int(box.cls[0])]
                 if len(poly_xy) < 3:
                     continue
                 polygon = Polygon(poly_xy)
                 if polygon.is_empty or not polygon.is_valid:
                     continue
-                if conf > self.contop_confidence_threshold:
+                if conf > self.confidence_threshold:
                     c = polygon.centroid
-                    segments.append((poly_xy, (c.x, c.y), label))
+                    segments.append((poly_xy, (c.x, c.y)))
 
         return segments
 
@@ -111,41 +90,27 @@ class ContopDetector:
         segments = self.export_frame(frame_processed)
         overlay = frame_processed.copy()
 
-        for poly_xy, (cx, cy), label in segments:
-            if not label:
-                continue
-
-            text, color_fill = label[0]
+        for poly_xy, (cx, cy) in segments:
             pts = np.array(poly_xy, np.int32).reshape((-1, 1, 2))
-            cv2.fillPoly(overlay, [pts], color_fill)
+            cv2.fillPoly(overlay, [pts], (0, 165, 255))
 
         alpha = 0.5
         cv2.addWeighted(overlay, alpha, frame_processed, 1 - alpha, 0, frame_processed)
-        frame_display = cv2.resize(frame_processed, self.window_size)
 
-        for poly_xy, (cx, cy), label in segments:
-            if not label:
-                continue
-
-            text, color_fill = label[0]
-            scaled_cx = int(cx * self.window_size[0] / self.process_size[0])
-            scaled_cy = int(cy * self.window_size[1] / self.process_size[1])
-
-            cvzone.putTextRect(frame_display, text, (scaled_cx, scaled_cy - 10), scale=0.75, thickness=1, offset=5, colorR=color_fill, colorT=(255, 255, 255))
-
-        return frame_display
+        for poly_xy, (cx, cy) in segments:
+            cvzone.putTextRect(frame_processed, "Warning!", (int(cx), int(cy) - 10), scale=0.5, thickness=1, offset=2, colorR=(0, 165, 255), colorT=(0, 0, 0))
+        return frame_processed
 
     def main(self):
         skip_frames = 2
         frame_count = 0
-        window_name = "Container Top Detection"
+        window_name = f"Container Top Detection : {self.camera_name}"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-        cv2.resizeWindow(window_name, self.window_size[0], self.window_size[1])
+        cv2.resizeWindow(window_name, self.window_size)
 
         try:
             if self.video_fps is None:
-                self.frame_thread = threading.Thread(target=self.capture_frame)
-                self.frame_thread.daemon = True
+                self.frame_thread = threading.Thread(target=self.capture_frame, daemon=True)
                 self.frame_thread.start()
                 while not self.stop_event.is_set():
                     try:
@@ -155,18 +120,19 @@ class ContopDetector:
                     frame_count += 1
                     if frame_count % skip_frames != 0:
                         continue
-
                     current_time = time.time()
                     time_diff = current_time - self.prev_frame_time
                     self.fps = 1 / time_diff if time_diff > 0 else 0
                     self.prev_frame_time = current_time
-                    frame_resized = self.process_frame(frame)
-                    cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
-                    cv2.imshow(window_name, frame_resized)
+                    output_frame = self.process_frame(frame)
+                    cvzone.putTextRect(output_frame, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
+                    cv2.imshow(window_name, output_frame)
                     key = cv2.waitKey(1) & 0xFF
                     if key in [ord("n"), ord("N")]:
+                        print("Manual stop detected.")
                         self.stop_event.set()
                         break
+                cv2.destroyAllWindows()
                 if self.frame_thread.is_alive():
                     self.frame_thread.join()
             else:
@@ -185,11 +151,11 @@ class ContopDetector:
                     time_diff = current_time - self.prev_frame_time
                     self.fps = 1 / time_diff if time_diff > 0 else 0
                     self.prev_frame_time = current_time
-                    frame_resized = self.process_frame(frame)
-                    cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
-                    cv2.imshow(window_name, frame_resized)
+                    output_frame = self.process_frame(frame)
+                    cvzone.putTextRect(output_frame, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
                     processing_time = (time.time() - start_time) * 1000
                     adjusted_delay = max(frame_delay - int(processing_time), 1)
+                    cv2.imshow(window_name, output_frame)
                     key = cv2.waitKey(adjusted_delay) & 0xFF
                     if key in [ord("n"), ord("N")]:
                         print("Manual stop detected.")
@@ -197,15 +163,30 @@ class ContopDetector:
                         break
 
                 cap.release()
+                cv2.destroyAllWindows()
         finally:
-            cv2.destroyAllWindows()
+            pass
+            # pelanggaran atau tidak, tempatnya disini
+            # print(f"[{self.camera_name}] Final overlap: {final_overlap:.2f}%, State: {state}")
+            # if "output_frame" in locals():
+            #     DataHandler(task="CONTOP").save_data(output_frame, final_overlap, self.camera_name, insert=True)
+            # else:
+            #     print("No frame to save.")
 
 
 if __name__ == "__main__":
-    ctd = ContopDetector(
-        contop_confidence_threshold=0,
-        camera_name="FREEMETAL2",
-        video_source=r"website/static/videos/seiketsu/1230(1).mp4",
-        window_size=(640, 360),
-    )
-    ctd.main()
+    import sys
+
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    parent_dir = os.path.join(current_dir, "..")
+    sys.path.append(parent_dir)
+    from libs.DataHandler import DataHandler
+
+    detector_args = {
+        "confidence_threshold": 0,
+        "camera_name": "FREEMETAL2",
+        "video_source": r"website/static/videos/seiketsu/1230(1).mp4",
+    }
+
+    detector = ContopDetector(**detector_args)
+    detector.main()
