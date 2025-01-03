@@ -1,18 +1,7 @@
-import os
-import cv2
+import os, cv2, numpy as np, time, torch, cvzone, threading, queue, math, json
 from ultralytics import YOLO
-import numpy as np
-import time
-import torch
-import cvzone
-import pymysql
-from datetime import datetime
-import threading
-import queue
-import math
 from shapely.geometry import Polygon, box
 from shapely.ops import unary_union
-import json
 
 
 class CarpalDetector:
@@ -291,9 +280,20 @@ class CarpalDetector:
                 state = "Tidak Mengelap kaca"
 
             print(f"[{self.camera_name}] Final overlap: {final_overlap:.2f}%, State: {state}")
+            if "output_frame" in locals():
+                DataHandler(task="-C").save_data(output_frame, final_overlap, self.camera_name, insert=True)
+            else:
+                print("No frame to save.")
 
 
 if __name__ == "__main__":
+    import sys
+
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    parent_dir = os.path.join(current_dir, "..")
+    sys.path.append(parent_dir)
+    from libs.DataHandler import DataHandler
+
     detector_args = {
         "camera_name": "SEWING1",
         # "video_source": r"C:\xampp\htdocs\VISUALAI\archives\static\videos\bd_test.mp4",
