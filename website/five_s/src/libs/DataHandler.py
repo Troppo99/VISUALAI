@@ -26,7 +26,7 @@ class DataHandler:
             print(f"Database connection failed: {e}")
             raise
 
-    def save_data(self, frame, percentage, camera_name, insert=True):
+    def save_data(self, frame, args, camera_name, insert=True):
         try:
             cvzone.putTextRect(frame, f"Datetime: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", (10, 30), scale=1, thickness=2, offset=5)
             cvzone.putTextRect(frame, f"Camera: {camera_name}", (10, 90), scale=1, thickness=2, offset=5)
@@ -35,13 +35,13 @@ class DataHandler:
             os.makedirs(os.path.dirname(self.image_path), exist_ok=True)
             cv2.imwrite(self.image_path, frame)
             if insert:
-                self.insert_data(percentage)
+                self.insert_data(args)
             print("Image saved and inserted successfully" if insert else "Image saved without inserting")
         except Exception as e:
             print(f"Failed to save image: {e}")
             raise
 
-    def insert_data(self, percentage):
+    def insert_data(self, args):
         try:
             self.config_database()
             if not self.image_path:
@@ -52,11 +52,23 @@ class DataHandler:
 
             camera_name = os.path.basename(self.image_path).split("_")[0]
             camera_name = camera_name + self.task
-            query = f"""
-            INSERT INTO {self.table} (camera_name, percentage, image)
-            VALUES (%s, %s, %s)
-            """
-            self.cursor.execute(query, (camera_name, percentage, binary_image))
+            if self.table == "cleaning":
+                self.cursor.execute(
+                    f"""
+                INSERT INTO {self.table} (camera_name, percentage, image)
+                VALUES (%s, %s, %s)
+                """,
+                    (camera_name, args, binary_image),
+                )
+            elif self.table == "violation":
+                state, warning_duration = args
+                self.cursor.execute(
+                    f"""
+                INSERT INTO {self.table} (camera_name, state, warning_duration, image)
+                VALUES (%s, %s, %s, %s)
+                """,
+                    (camera_name, state, warning_duration, binary_image),
+                )
             self.connection.commit()
         except Exception as e:
             print(f"Error saving data: {e}")

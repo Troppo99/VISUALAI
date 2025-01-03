@@ -18,6 +18,11 @@ class ContopDetector:
         self.lock = threading.Lock()
         self.stop_event = threading.Event()
 
+        # Inisialisasi atribut untuk penghitungan durasi
+        self.timer_running = False
+        self.start_time = None
+        self.duration = 0
+
     def camera_config(self):
         with open(r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf\camera_config.json", "r") as f:
             config = json.load(f)
@@ -99,70 +104,112 @@ class ContopDetector:
 
         for poly_xy, (cx, cy) in segments:
             cvzone.putTextRect(frame_processed, "Warning!", (int(cx), int(cy) - 10), scale=0.5, thickness=1, offset=2, colorR=(0, 165, 255), colorT=(0, 0, 0))
-        return frame_processed
+
+        object_detected = len(segments) > 0
+        return frame_processed, object_detected
 
     def main(self):
+        state = "Violation tidak ditemukan"
         skip_frames = 2
         frame_count = 0
         window_name = f"Container Top Detection : {self.camera_name}"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(window_name, self.window_size)
 
-        if self.video_fps is None:
-            self.frame_thread = threading.Thread(target=self.capture_frame, daemon=True)
-            self.frame_thread.start()
-            while not self.stop_event.is_set():
-                try:
-                    frame = self.frame_queue.get(timeout=1)
-                except queue.Empty:
-                    continue
-                frame_count += 1
-                if frame_count % skip_frames != 0:
-                    continue
-                current_time = time.time()
-                time_diff = current_time - self.prev_frame_time
-                self.fps = 1 / time_diff if time_diff > 0 else 0
-                self.prev_frame_time = current_time
-                output_frame = self.process_frame(frame)
-                cvzone.putTextRect(output_frame, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
-                cv2.imshow(window_name, output_frame)
-                key = cv2.waitKey(1) & 0xFF
-                if key in [ord("n"), ord("N")]:
-                    print("Manual stop detected.")
-                    self.stop_event.set()
-                    break
-            cv2.destroyAllWindows()
-            if self.frame_thread.is_alive():
-                self.frame_thread.join()
-        else:
-            cap = cv2.VideoCapture(self.video_source)
-            frame_delay = max(int(1000 / self.video_fps), 1)
-            while cap.isOpened() and not self.stop_event.is_set():
-                start_time = time.time()
-                ret, frame = cap.read()
-                if not ret:
-                    print("Video ended.")
-                    break
-                frame_count += 1
-                if frame_count % skip_frames != 0:
-                    continue
-                current_time = time.time()
-                time_diff = current_time - self.prev_frame_time
-                self.fps = 1 / time_diff if time_diff > 0 else 0
-                self.prev_frame_time = current_time
-                output_frame = self.process_frame(frame)
-                cvzone.putTextRect(output_frame, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
-                processing_time = (time.time() - start_time) * 1000
-                adjusted_delay = max(frame_delay - int(processing_time), 1)
-                cv2.imshow(window_name, output_frame)
-                key = cv2.waitKey(adjusted_delay) & 0xFF
-                if key in [ord("n"), ord("N")]:
-                    print("Manual stop detected.")
-                    self.stop_event.set()
-                    break
+        try:
+            if self.video_fps is None:
+                self.frame_thread = threading.Thread(target=self.capture_frame, daemon=True)
+                self.frame_thread.start()
+                while not self.stop_event.is_set():
+                    try:
+                        frame = self.frame_queue.get(timeout=1)
+                    except queue.Empty:
+                        continue
+                    frame_count += 1
+                    if frame_count % skip_frames != 0:
+                        continue
+                    current_time = time.time()
+                    time_diff = current_time - self.prev_frame_time
+                    self.fps = 1 / time_diff if time_diff > 0 else 0
+                    self.prev_frame_time = current_time
+                    output_frame, object_detected = self.process_frame(frame)
 
-            cap.release()
-            cv2.destroyAllWindows()
+                    if object_detected:
+                        state = "Violation ditemukan"
+                        if not self.timer_running:
+                            self.timer_running = True
+                            self.start_time = current_time
+                            self.duration = 0
+                        else:
+                            self.duration = current_time - self.start_time
+                    else:
+                        state = "Violation tidak ditemukan"
+                        self.timer_running = False
+                        self.start_time = None
+                        self.duration = 0
+
+                    cvzone.putTextRect(output_frame, f"Duration: {int(self.duration)}s", (10, 130), scale=1, thickness=2, offset=5)
+                    cvzone.putTextRect(output_frame, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
+                    cv2.imshow(window_name, output_frame)
+                    key = cv2.waitKey(1) & 0xFF
+                    if key in [ord("n"), ord("N")]:
+                        print("Manual stop detected.")
+                        self.stop_event.set()
+                        break
+                cv2.destroyAllWindows()
+                if self.frame_thread.is_alive():
+                    self.frame_thread.join()
+            else:
+                cap = cv2.VideoCapture(self.video_source)
+                frame_delay = max(int(1000 / self.video_fps), 1)
+                while cap.isOpened() and not self.stop_event.is_set():
+                    start_time = time.time()
+                    ret, frame = cap.read()
+                    if not ret:
+                        print("Video ended.")
+                        break
+                    frame_count += 1
+                    if frame_count % skip_frames != 0:
+                        continue
+                    current_time = time.time()
+                    time_diff = current_time - self.prev_frame_time
+                    self.fps = 1 / time_diff if time_diff > 0 else 0
+                    self.prev_frame_time = current_time
+                    output_frame, object_detected = self.process_frame(frame)
+
+                    if object_detected:
+                        state = "Violation ditemukan"
+                        if not self.timer_running:
+                            self.timer_running = True
+                            self.start_time = current_time
+                            self.duration = 0
+                        else:
+                            self.duration = current_time - self.start_time
+                    else:
+                        state = "Violation tidak ditemukan"
+                        self.timer_running = False
+                        self.start_time = None
+                        self.duration = 0
+
+                    cvzone.putTextRect(output_frame, f"Duration: {int(self.duration)}s", (10, 130), scale=1, thickness=2, offset=5)
+                    cvzone.putTextRect(output_frame, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
+                    processing_time = (time.time() - start_time) * 1000
+                    adjusted_delay = max(frame_delay - int(processing_time), 1)
+                    cv2.imshow(window_name, output_frame)
+                    key = cv2.waitKey(adjusted_delay) & 0xFF
+                    if key in [ord("n"), ord("N")]:
+                        print("Manual stop detected.")
+                        self.stop_event.set()
+                        break
+
+                cap.release()
+                cv2.destroyAllWindows()
+        finally:
+            print(f"[{self.camera_name}] Status: {state}")
+            if "output_frame" in locals():
+                DataHandler(table="violation", task="-CONTOP").save_data(output_frame, (state, self.duration), self.camera_name, insert=True)
+            else:
+                print("No frame to save.")
 
 
 if __name__ == "__main__":
@@ -175,8 +222,8 @@ if __name__ == "__main__":
 
     detector_args = {
         "confidence_threshold": 0,
-        "camera_name": "FREEMETAL2",
-        "video_source": r"website/static/videos/seiketsu/1230(1).mp4",
+        "camera_name": "FREEMETAL1",
+        # "video_source": r"website/static/videos/seiketsu/1230(1).mp4",
     }
 
     detector = ContopDetector(**detector_args)
