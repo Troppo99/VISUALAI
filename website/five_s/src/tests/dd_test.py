@@ -9,28 +9,7 @@ import json
 import sys
 
 
-def place_text_in_roi(output, text, x, y, w, h, frame_width, frame_height):
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    font_scale = 0.5
-    thickness = 1
-    (text_width, text_height), _ = cv2.getTextSize(text, font, font_scale, thickness)
-    candidates = [(x + 5, y + 20), (x + w - text_width - 5, y + 20), (x + 5, y + h - 5), (x + w - text_width - 5, y + h - 5)]
-    for tx, ty in candidates:
-        if tx < 0:
-            continue
-        if ty - text_height < 0:
-            continue
-        if (tx + text_width) > frame_width:
-            continue
-        if ty > frame_height:
-            continue
-        return (tx, ty)
-    tx = max(0, min(x + 5, frame_width - text_width - 5))
-    ty = max(text_height + 5, min(y + 20, frame_height - 5))
-    return (tx, ty)
-
-
-class AnomalyDetection:
+class DifferenceDetector:
     def __init__(self, video_source="rtsp", rois=None, reference_filename=None, ip_camera=None):
         self.target_width = 960
         self.target_height = 540
@@ -199,7 +178,7 @@ class AnomalyDetection:
 
                         self.handle_roi_timer(idx, detection_found, current_time)
                         dur_str = self.get_roi_timer_str(idx, current_time)
-                        tx, ty = place_text_in_roi(output, dur_str, x, y, w, h, self.target_width, self.target_height)
+                        tx, ty = self.place_text_in_roi(output, dur_str, x, y, w, h)
                         cv2.putText(output, dur_str, (tx, ty), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
 
                     except Exception as e:
@@ -219,13 +198,19 @@ class AnomalyDetection:
             # Tampilkan nilai sensitivitas di sisi kiri-atas frame
             cv2.putText(output, f"Threshold: {self.sensitivity_threshold}", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)  # posisi teks  # skala font
 
+            # **Tambahkan Penggambaran ROIs di Sini**
+            for roi in self.rois:
+                # Pastikan ROI adalah list dari tuple (x, y)
+                if len(roi) >= 2:
+                    cv2.polylines(output, [np.array(roi, np.int32)], isClosed=True, color=(0, 255, 0), thickness=2)
+
             # Jika user menekan 'r', kita toggle tampilan referensi
             if self.show_reference:
                 ref_disp = self.reference_display.copy()
                 combo = cv2.hconcat([output, ref_disp])
-                cv2.imshow("AnomalyDetection", combo)
+                cv2.imshow("DifferenceDetector", combo)
             else:
-                cv2.imshow("AnomalyDetection", output)
+                cv2.imshow("DifferenceDetector", output)
 
             key = cv2.waitKey(1) & 0xFF
             if key == ord("n"):
@@ -320,34 +305,51 @@ class AnomalyDetection:
         except Exception as e:
             print(f"Error update_reference_image: {e}")
 
+    def place_text_in_roi(self, output, text, x, y, w, h):
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.5
+        thickness = 1
+        (text_width, text_height), _ = cv2.getTextSize(text, font, font_scale, thickness)
+        candidates = [(x + 5, y + 20), (x + w - text_width - 5, y + 20), (x + 5, y + h - 5), (x + w - text_width - 5, y + h - 5)]
+        for tx, ty in candidates:
+            if tx < 0:
+                continue
+            if ty - text_height < 0:
+                continue
+            if (tx + text_width) > self.target_width:
+                continue
+            if ty > self.target_height:
+                continue
+            return (tx, ty)
+        tx = max(0, min(x + 5, self.target_width - text_width - 5))
+        ty = max(text_height + 5, min(y + 20, self.target_height - 5))
+        return (tx, ty)
 
-def main():
-    config_path = r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf\camera_config.json"
-    with open(config_path, "r") as f:
-        config = json.load(f)
-    office_key = "CUTTING8"
-    reference_filename = config[office_key]["dd_reference"]
-    ip_camera = config[office_key]["ip"]
-    dd_rois_path = config[office_key]["dd_rois"]
-    with open(dd_rois_path, "r") as f_rois:
-        rois = json.load(f_rois)
+    def camera_config():
+        with open(r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf\camera_config.json", "r") as f:
+            config = json.load(f)
+        office_key = "CUTTING8"
+        reference_filename = config[office_key]["dd_reference"]
+        ip_camera = config[office_key]["ip"]
+        dd_rois_path = config[office_key]["dd_rois"]
+        with open(dd_rois_path, "r") as f_rois:
+            rois = json.load(f_rois)
+        return reference_filename, ip_camera, rois
 
+if __name__ == "__main__":
+    reference_filename, ip_camera, rois = DifferenceDetector.camera_config()    
     try:
-        ad = AnomalyDetection(video_source="rtsp", rois=rois, reference_filename=reference_filename, ip_camera=ip_camera)
+        dd = DifferenceDetector(video_source="rtsp", rois=rois, reference_filename=reference_filename, ip_camera=ip_camera)
     except ValueError as e:
         print(str(e))
         sys.exit(1)
 
-    t_capture = threading.Thread(target=ad.capture_frames)
-    t_process = threading.Thread(target=ad.process_frames)
+    t_capture = threading.Thread(target=dd.capture_frames)
+    t_process = threading.Thread(target=dd.process_frames)
     t_capture.start()
     t_process.start()
     t_process.join()
-    ad.stop_event.set()
+    dd.stop_event.set()
     t_capture.join()
-    ad.cap.release()
+    dd.cap.release()
     cv2.destroyAllWindows()
-
-
-if __name__ == "__main__":
-    main()
