@@ -6,7 +6,7 @@ import cv2
 
 
 class DataHandler:
-    def __init__(self, host="10.5.0.2", user="robot", password="robot123", database="visualai_db", table="cleaning", port=3307, task="-?"):
+    def __init__(self, host="10.5.0.2", user="robot", password="robot123", database="visualai_db", table="cleaning", port=3307, task=""):
         self.host = host
         self.user = user
         self.password = password

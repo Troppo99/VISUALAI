@@ -71,7 +71,6 @@ class BroomDetector:
             self.is_local_video = False
             self.video_source = f"rtsp://admin:oracle2015@{self.ip_camera}:554/Streaming/Channels/1"
         else:
-            self.video_source = self.video_source
             if os.path.isfile(self.video_source):
                 self.is_local_video = True
                 cap = cv2.VideoCapture(self.video_source)
@@ -82,7 +81,6 @@ class BroomDetector:
             else:
                 self.is_local_video = False
                 self.video_fps = None
-                exit()
 
     def capture_frame(self):
         while not self.stop_event.is_set():
@@ -220,7 +218,7 @@ class BroomDetector:
         state = ""
         skip_frames = 2
         frame_count = 0
-        window_name = "Brooming Detection"
+        window_name = f"Brooming Detection : {self.camera_name}"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(window_name, self.window_size)
         final_overlap = 0
