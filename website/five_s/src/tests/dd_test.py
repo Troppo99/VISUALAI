@@ -325,7 +325,7 @@ def main():
     config_path = r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf\camera_config.json"
     with open(config_path, "r") as f:
         config = json.load(f)
-    office_key = "CUTTING1"
+    office_key = "CUTTING8"
     reference_filename = config[office_key]["dd_reference"]
     ip_camera = config[office_key]["ip"]
     dd_rois_path = config[office_key]["dd_rois"]
