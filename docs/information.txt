@@ -1,0 +1,5 @@
+ada dua tabel database:
+1. cleaning: hanya lapor data sekali
+2. violation:
+    - hanya lapor data violation tanpa follow up donenya
+    - lapor data violation dan follow up done nya, sehinga satu row bisa terupdate

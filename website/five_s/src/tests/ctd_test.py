@@ -108,70 +108,61 @@ class ContopDetector:
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(window_name, self.window_size)
 
-        try:
-            if self.video_fps is None:
-                self.frame_thread = threading.Thread(target=self.capture_frame, daemon=True)
-                self.frame_thread.start()
-                while not self.stop_event.is_set():
-                    try:
-                        frame = self.frame_queue.get(timeout=1)
-                    except queue.Empty:
-                        continue
-                    frame_count += 1
-                    if frame_count % skip_frames != 0:
-                        continue
-                    current_time = time.time()
-                    time_diff = current_time - self.prev_frame_time
-                    self.fps = 1 / time_diff if time_diff > 0 else 0
-                    self.prev_frame_time = current_time
-                    output_frame = self.process_frame(frame)
-                    cvzone.putTextRect(output_frame, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
-                    cv2.imshow(window_name, output_frame)
-                    key = cv2.waitKey(1) & 0xFF
-                    if key in [ord("n"), ord("N")]:
-                        print("Manual stop detected.")
-                        self.stop_event.set()
-                        break
-                cv2.destroyAllWindows()
-                if self.frame_thread.is_alive():
-                    self.frame_thread.join()
-            else:
-                cap = cv2.VideoCapture(self.video_source)
-                frame_delay = max(int(1000 / self.video_fps), 1)
-                while cap.isOpened() and not self.stop_event.is_set():
-                    start_time = time.time()
-                    ret, frame = cap.read()
-                    if not ret:
-                        print("Video ended.")
-                        break
-                    frame_count += 1
-                    if frame_count % skip_frames != 0:
-                        continue
-                    current_time = time.time()
-                    time_diff = current_time - self.prev_frame_time
-                    self.fps = 1 / time_diff if time_diff > 0 else 0
-                    self.prev_frame_time = current_time
-                    output_frame = self.process_frame(frame)
-                    cvzone.putTextRect(output_frame, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
-                    processing_time = (time.time() - start_time) * 1000
-                    adjusted_delay = max(frame_delay - int(processing_time), 1)
-                    cv2.imshow(window_name, output_frame)
-                    key = cv2.waitKey(adjusted_delay) & 0xFF
-                    if key in [ord("n"), ord("N")]:
-                        print("Manual stop detected.")
-                        self.stop_event.set()
-                        break
+        if self.video_fps is None:
+            self.frame_thread = threading.Thread(target=self.capture_frame, daemon=True)
+            self.frame_thread.start()
+            while not self.stop_event.is_set():
+                try:
+                    frame = self.frame_queue.get(timeout=1)
+                except queue.Empty:
+                    continue
+                frame_count += 1
+                if frame_count % skip_frames != 0:
+                    continue
+                current_time = time.time()
+                time_diff = current_time - self.prev_frame_time
+                self.fps = 1 / time_diff if time_diff > 0 else 0
+                self.prev_frame_time = current_time
+                output_frame = self.process_frame(frame)
+                cvzone.putTextRect(output_frame, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
+                cv2.imshow(window_name, output_frame)
+                key = cv2.waitKey(1) & 0xFF
+                if key in [ord("n"), ord("N")]:
+                    print("Manual stop detected.")
+                    self.stop_event.set()
+                    break
+            cv2.destroyAllWindows()
+            if self.frame_thread.is_alive():
+                self.frame_thread.join()
+        else:
+            cap = cv2.VideoCapture(self.video_source)
+            frame_delay = max(int(1000 / self.video_fps), 1)
+            while cap.isOpened() and not self.stop_event.is_set():
+                start_time = time.time()
+                ret, frame = cap.read()
+                if not ret:
+                    print("Video ended.")
+                    break
+                frame_count += 1
+                if frame_count % skip_frames != 0:
+                    continue
+                current_time = time.time()
+                time_diff = current_time - self.prev_frame_time
+                self.fps = 1 / time_diff if time_diff > 0 else 0
+                self.prev_frame_time = current_time
+                output_frame = self.process_frame(frame)
+                cvzone.putTextRect(output_frame, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
+                processing_time = (time.time() - start_time) * 1000
+                adjusted_delay = max(frame_delay - int(processing_time), 1)
+                cv2.imshow(window_name, output_frame)
+                key = cv2.waitKey(adjusted_delay) & 0xFF
+                if key in [ord("n"), ord("N")]:
+                    print("Manual stop detected.")
+                    self.stop_event.set()
+                    break
 
-                cap.release()
-                cv2.destroyAllWindows()
-        finally:
-            pass
-            # pelanggaran atau tidak, tempatnya disini
-            # print(f"[{self.camera_name}] Final overlap: {final_overlap:.2f}%, State: {state}")
-            # if "output_frame" in locals():
-            #     DataHandler(task="CONTOP").save_data(output_frame, final_overlap, self.camera_name, insert=True)
-            # else:
-            #     print("No frame to save.")
+            cap.release()
+            cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
