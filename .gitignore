@@ -16,3 +16,4 @@ website/media/*
 .draft.py
 *_all.py
 .draft.*
+desktop.ini
