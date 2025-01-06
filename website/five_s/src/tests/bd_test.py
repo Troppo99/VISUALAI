@@ -1,7 +1,12 @@
-import cv2, cvzone, json, math, numpy as np, os, queue, threading, time, torch
+import cv2, cvzone, json, math, numpy as np, os, queue, threading, time, torch, sys
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
 from ultralytics import YOLO
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.join(current_dir, "..")
+sys.path.append(parent_dir)
+from libs.DataHandler import DataHandler
 
 
 class BroomDetector:
@@ -294,13 +299,6 @@ class BroomDetector:
 
 
 if __name__ == "__main__":
-    import sys
-
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    parent_dir = os.path.join(current_dir, "..")
-    sys.path.append(parent_dir)
-    from libs.DataHandler import DataHandler
-
     detector_args = {
         "confidence_threshold": 0,
         "camera_name": "OFFICE1",
