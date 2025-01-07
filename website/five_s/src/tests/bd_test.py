@@ -10,7 +10,14 @@ from libs.DataHandler import DataHandler
 
 
 class BroomDetector:
-    def __init__(self, confidence_threshold=0.5, video_source=None, camera_name=None, window_size=(320, 240)):
+    def __init__(self, confidence_threshold=0.5, video_source=None, camera_name=None, window_size=(320, 240), stop_event=None):
+        self.stop_event = stop_event  # <-- Event dari luar
+        # Kalau belum ada, fallback ke threading.Event() supaya tidak error
+        if self.stop_event is None:
+            import threading
+
+            self.stop_event = threading.Event()
+
         self.confidence_threshold = confidence_threshold
         self.video_source = video_source
         self.camera_name = camera_name
@@ -36,7 +43,6 @@ class BroomDetector:
         self.trail_map_start_time = None
         self.start_run_time = time.time()
         self.capture_done = False
-        self.stop_event = threading.Event()
 
     def camera_config(self):
         with open(r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf\camera_config.json", "r") as f:
@@ -230,9 +236,11 @@ class BroomDetector:
 
         try:
             if self.video_fps is None:
+                self.frame_queue = queue.Queue(maxsize=10)
                 self.frame_thread = threading.Thread(target=self.capture_frame)
                 self.frame_thread.daemon = True
                 self.frame_thread.start()
+
                 while not self.stop_event.is_set():
                     try:
                         frame = self.frame_queue.get(timeout=1)
@@ -253,6 +261,7 @@ class BroomDetector:
                         print("Manual stop detected.")
                         self.stop_event.set()
                         break
+
                 cv2.destroyAllWindows()
                 if self.frame_thread.is_alive():
                     self.frame_thread.join()
@@ -291,20 +300,10 @@ class BroomDetector:
                 state = "Menyapu tidak selesai"
             else:
                 state = "Tidak menyapu"
-            print(state)
+            print(f"{self.camera_name} => {state}")
+
+            # Contoh kirim data
             if "frame_resized" in locals():
                 DataHandler(task="-B").save_data(frame_resized, final_overlap, self.camera_name, insert=True)
             else:
                 print("No frame to save.")
-
-
-if __name__ == "__main__":
-    detector_args = {
-        "confidence_threshold": 0,
-        "camera_name": "OFFICE1",
-        "video_source": r"C:\xampp\htdocs\VISUALAI\archives\static\videos\bd_test.mp4",
-        "window_size": (320, 240),
-    }
-
-    detector = BroomDetector(**detector_args)
-    detector.main()
