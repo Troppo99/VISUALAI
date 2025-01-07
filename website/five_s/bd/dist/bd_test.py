@@ -1,12 +1,82 @@
-import cv2, cvzone, json, math, numpy as np, os, queue, threading, time, torch, sys
+import cv2, cvzone, json, math, numpy as np, os, queue, threading, time, torch, sys, pymysql
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
 from ultralytics import YOLO
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+from pytz import timezone
+from datetime import datetime
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.join(current_dir, "..")
-sys.path.append(parent_dir)
-from libs.DataHandler import DataHandler
+class DataHandler:
+    def __init__(self, host="10.5.0.2", user="robot", password="robot123", database="visualai_db", table="cleaning", port=3307, task=""):
+        self.host = host
+        self.user = user
+        self.password = password
+        self.database = database
+        self.table = table
+        self.port = port
+        self.connection = None
+        self.cursor = None
+        self.image_path = None
+        self.task = task
+
+    def config_database(self):
+        try:
+            self.connection = pymysql.connect(host=self.host, user=self.user, password=self.password, database=self.database, port=self.port)
+            self.cursor = self.connection.cursor()
+        except pymysql.MySQLError as e:
+            print(f"Database connection failed: {e}")
+            raise
+
+    def save_data(self, frame, args, camera_name, insert=True):
+        try:
+            cvzone.putTextRect(frame, f"Datetime: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", (10, 30), scale=1, thickness=2, offset=5)
+            cvzone.putTextRect(frame, f"Camera: {camera_name}", (10, 90), scale=1, thickness=2, offset=5)
+            timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+            self.image_path = rf"C:\xampp\htdocs\VISUALAI\website\media\brooming_frames\{camera_name}_{timestamp_str}.jpg"
+            os.makedirs(os.path.dirname(self.image_path), exist_ok=True)
+            cv2.imwrite(self.image_path, frame)
+            if insert:
+                self.insert_data(args)
+            print("Image saved and inserted successfully" if insert else "Image saved without inserting")
+        except Exception as e:
+            print(f"Failed to save image: {e}")
+            raise
+
+    def insert_data(self, args):
+        try:
+            self.config_database()
+            if not self.image_path:
+                raise ValueError("Image path is not set")
+
+            with open(self.image_path, "rb") as file:
+                binary_image = file.read()
+
+            camera_name = os.path.basename(self.image_path).split("_")[0]
+            camera_name = camera_name + self.task
+            if self.table == "cleaning":
+                self.cursor.execute(
+                    f"""
+                INSERT INTO {self.table} (camera_name, percentage, image)
+                VALUES (%s, %s, %s)
+                """,
+                    (camera_name, args, binary_image),
+                )
+            elif self.table == "violation":
+                state, warning_duration = args
+                self.cursor.execute(
+                    f"""
+                INSERT INTO {self.table} (camera_name, state, warning_duration, image)
+                VALUES (%s, %s, %s, %s)
+                """,
+                    (camera_name, state, warning_duration, binary_image),
+                )
+            self.connection.commit()
+        except Exception as e:
+            print(f"Error saving data: {e}")
+        finally:
+            if self.connection:
+                self.connection.close()
 
 
 class BroomDetector:
@@ -307,3 +377,97 @@ class BroomDetector:
                 DataHandler(task="-B").save_data(frame_resized, final_overlap, self.camera_name, insert=True)
             else:
                 print("No frame to save.")
+
+
+class Scheduling:
+    def __init__(self, detector_args, broom_schedule_type):
+        self.detector_args = detector_args
+        self.broom_schedule_type = broom_schedule_type
+        self.detector = None
+        self.scheduler = BackgroundScheduler(
+            timezone=timezone("Asia/Jakarta"),
+            job_defaults={"misfire_grace_time": 180},
+        )
+        self.setup_schedule()
+        self.scheduler.start()
+
+    def start_detection(self):
+        # playsound("output_gtts.mp3")
+        if not self.detector:
+            print("Starting BroomDetector...")
+            self.detector = BroomDetector(**self.detector_args)
+            detection_thread = threading.Thread(target=self.detector.main)
+            detection_thread.daemon = True
+            detection_thread.start()
+        else:
+            print("BroomDetector is already running.")
+
+    def stop_detection(self):
+        if self.detector:
+            print("Stopping BroomDetector...")
+            self.detector.stop_event.set()
+            self.detector = None
+        else:
+            print("BroomDetector is not running.")
+
+    def setup_schedule(self):
+        if self.broom_schedule_type == "OFFICE":
+            work_days = ["mon", "tue", "wed", "thu", "fri"]
+            for day in work_days:
+                # S1 : 06:00 - 08:30
+                h1, m1, s1 = (6, 0, 0)
+                h2, m2, s2 = (8, 30, 0)
+                start_trigger = CronTrigger(day_of_week=day, hour=h1, minute=m1, second=s1)
+                self.scheduler.add_job(self.start_detection, trigger=start_trigger, id=f"start_{day}", replace_existing=True)
+                stop_trigger = CronTrigger(day_of_week=day, hour=h2, minute=m2, second=s2)
+                self.scheduler.add_job(self.stop_detection, trigger=stop_trigger, id=f"stop_{day}", replace_existing=True)
+        elif self.broom_schedule_type == "SEWING":
+            work_days = ["mon", "tue", "wed", "thu", "fri"]
+            for day in work_days:
+                # S1 : 07:30 - 09:45
+                # S2 : 09:45 - 12:50
+                # S3 : 12:50 - 13:05
+                h1, m1, s1 = (10, 41, 10)
+                h2, m2, s2 = (10, 41, 20)
+                h3, m3, s3 = (10, 41, 30)
+                h4, m4, s4 = (10, 41, 40)
+                h5, m5, s5 = (10, 42, 10)
+                h6, m6, s6 = (10, 42, 20)
+                s1_start = CronTrigger(day_of_week=day, hour=h1, minute=m1, second=s1)
+                s1_stop = CronTrigger(day_of_week=day, hour=h2, minute=m2, second=s2)
+                s2_start = CronTrigger(day_of_week=day, hour=h3, minute=m3, second=s3)
+                s2_stop = CronTrigger(day_of_week=day, hour=h4, minute=m4, second=s4)
+                s3_start = CronTrigger(day_of_week=day, hour=h5, minute=m5, second=s5)
+                s3_stop = CronTrigger(day_of_week=day, hour=h6, minute=m6, second=s6)
+
+                self.scheduler.add_job(self.start_detection, trigger=s1_start, id=f"s1_start_{day}", replace_existing=True)
+                self.scheduler.add_job(self.stop_detection, trigger=s1_stop, id=f"s1_stop_{day}", replace_existing=True)
+
+                self.scheduler.add_job(self.start_detection, trigger=s2_start, id=f"s2_start_{day}", replace_existing=True)
+                self.scheduler.add_job(self.stop_detection, trigger=s2_stop, id=f"s2_stop_{day}", replace_existing=True)
+
+                self.scheduler.add_job(self.start_detection, trigger=s3_start, id=f"s3_start_{day}", replace_existing=True)
+                self.scheduler.add_job(self.stop_detection, trigger=s3_stop, id=f"s3_stop_{day}", replace_existing=True)
+
+    def shutdown(self):
+        print("Shutdown scheduler and BroomDetector if not running...")
+        self.scheduler.shutdown(wait=False)
+        self.stop_detection()
+
+
+if __name__ == "__main__":
+    detector_args = {
+        "confidence_threshold": 0,
+        "camera_name": "SEWINGBACK1",
+        # "video_source": "static/videos/bd_test3.mp4",
+        "window_size": (320, 240),
+    }
+
+    scheduler = Scheduling(detector_args, "SEWING")
+
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("Program terminated by user.")
+        scheduler.shutdown()
