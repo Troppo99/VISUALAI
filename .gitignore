@@ -17,3 +17,5 @@ website/media/*
 *_all.py
 .draft.*
 desktop.ini
+
+bd_run-*.py
