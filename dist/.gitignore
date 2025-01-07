@@ -1,0 +1,10 @@
+.venv/*
+.vscode
+.vscode/*
+.archives/*
+resources/*
+media/*
+*.pyc
+.draft.*
+desktop.ini
+bd_run-*.py
