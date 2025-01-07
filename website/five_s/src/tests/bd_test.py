@@ -310,5 +310,5 @@ class BroomDetector:
 
 
 if __name__ == "__main__":
-    bd = BroomDetector(camera_name="BUFFER1")
+    bd = BroomDetector(camera_name="KANTIN1")
     bd.main()

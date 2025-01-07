@@ -2,7 +2,7 @@ import os
 import json
 
 # Direktori tempat file JSON berada
-DIRECTORY = r"C:\xampp\htdocs\VISUALAI\bd_rois"
+DIRECTORY = r"C:\xampp\htdocs\VISUALAI\coords"
 
 # Resolusi asli dan baru
 ORIGINAL_WIDTH = 960

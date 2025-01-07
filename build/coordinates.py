@@ -4,7 +4,7 @@ import os
 
 # Input source (RTSP link, local video file, image file)
 file_name = "SEWING1"
-video_path = "rtsp://admin:oracle2015@172.16.0.137:554/Streaming/Channels/1"
+video_path = "rtsp://admin:oracle2015@172.16.0.14:554/Streaming/Channels/1"
 # Contoh lainnya:
 # video_path = "rtsp://username:password@ip_address:554/Streaming/Channels/1"
 # video_path = "C:/path/to/video.mp4"
