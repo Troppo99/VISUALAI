@@ -53,12 +53,12 @@ class Scheduling:
                 # S1 : 07:30 - 09:45
                 # S2 : 09:45 - 12:50
                 # S3 : 12:50 - 13:05
-                h1, m1, s1 = (13, 40, 10)
-                h2, m2, s2 = (13, 40, 20)
-                h3, m3, s3 = (13, 40, 25)
-                h4, m4, s4 = (13, 40, 35)
-                h5, m5, s5 = (13, 40, 40)
-                h6, m6, s6 = (13, 40,50)
+                h1, m1, s1 = (8, 58, 0)
+                h2, m2, s2 = (9, 44, 0)
+                h3, m3, s3 = (9, 45, 0)
+                h4, m4, s4 = (12, 49, 0)
+                h5, m5, s5 = (12, 50, 0)
+                h6, m6, s6 = (13, 5,0)
                 s1_start = CronTrigger(day_of_week=day, hour=h1, minute=m1, second=s1)
                 s1_stop = CronTrigger(day_of_week=day, hour=h2, minute=m2, second=s2)
                 s2_start = CronTrigger(day_of_week=day, hour=h3, minute=m3, second=s3)

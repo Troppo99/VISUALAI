@@ -229,7 +229,7 @@ class BroomDetector:
         state = ""
         skip_frames = 2
         frame_count = 0
-        window_name = f"Brooming Detection : {self.camera_name}"
+        window_name = f"BD:{self.camera_name}"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(window_name, self.window_size)
         final_overlap = 0

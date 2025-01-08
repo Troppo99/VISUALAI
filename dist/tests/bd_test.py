@@ -26,7 +26,7 @@ class BroomDetector:
         self.rois, self.ip_camera = self.camera_config()
         self.choose_video_source()
         self.prev_frame_time = 0
-        self.model = YOLO(r"resources\models\bd6l.pt").to("cuda")
+        self.model = YOLO(r"C:\xampp\htdocs\VISUALAI\website\static\resources\models\bd6l.pt").to("cuda")
         self.model.overrides["verbose"] = False
 
         if len(self.rois) > 1:
@@ -45,7 +45,7 @@ class BroomDetector:
         self.capture_done = False
 
     def camera_config(self):
-        with open(r"resources\conf\camera_config.json", "r") as f:
+        with open(r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf\camera_config.json", "r") as f:
             config = json.load(f)
         ip = config[self.camera_name]["ip"]
         scaled_rois = []
@@ -229,7 +229,7 @@ class BroomDetector:
         state = ""
         skip_frames = 2
         frame_count = 0
-        window_name = f"Brooming Detection : {self.camera_name}"
+        window_name = f"BD:{self.camera_name}"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(window_name, self.window_size)
         final_overlap = 0
@@ -307,3 +307,8 @@ class BroomDetector:
                 DataHandler(task="-B").save_data(frame_resized, final_overlap, self.camera_name, insert=True)
             else:
                 print("No frame to save.")
+
+
+if __name__ == "__main__":
+    bd = BroomDetector(camera_name="KANTIN1")
+    bd.main()
