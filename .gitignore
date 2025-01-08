@@ -19,3 +19,7 @@ website/media/*
 desktop.ini
 
 bd_run-*.py
+
+**/datasets/*
+**/models/*
+yolo11n.pt

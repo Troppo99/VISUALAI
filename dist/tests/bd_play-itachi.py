@@ -3,7 +3,7 @@ import subprocess
 camera_list = [
     # "BUFFER1",
     # "CUTTING3",
-    # "EKSPEDISI2",
+    # "EKSPEDISI1",
     # "FOLDING2",
     # "FOLDING3",
     # "FREEMETAL1",
