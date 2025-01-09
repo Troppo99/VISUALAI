@@ -3,12 +3,9 @@
 .vscode/*
 
 archives/static/data/*
-archives/static/models/*
-archives/static/images/*
-archives/static/videos/*
 
-website/static/images/*
-website/static/videos/*
+**/images/*
+**/videos/*
 website/static/resources/*
 website/media/*
 
