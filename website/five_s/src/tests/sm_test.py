@@ -3,6 +3,26 @@ from ultralytics import YOLO
 from shapely.geometry import Polygon
 
 
+class BlazingModel:
+    def __init__(self, model_path, confidence_threshold=0.5, device="cuda"):
+        self.confidence_threshold = confidence_threshold
+        self.model = YOLO(model_path).to(device)
+        self.model.overrides["verbose"] = False
+
+    def detect(self, frame):
+        with torch.no_grad():
+            results = self.model(frame, stream=True, imgsz=640)
+        detections = []
+        for result in results:
+            for box in result.boxes:
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                conf = box.conf[0].item()
+                class_id = self.model.names[int(box.cls[0])]
+                if conf > self.confidence_threshold:
+                    detections.append((x1, y1, x2, y2, class_id, conf))
+        return detections
+
+
 class SpreadingManual:
     def __init__(self, confidence_threshold=0.5, video_source=None, camera_name=None, window_size=(320, 240), stop_event=None):
         self.stop_event = stop_event
@@ -19,6 +39,8 @@ class SpreadingManual:
         self.prev_frame_time = 0
         self.model = YOLO(r"C:\xampp\htdocs\VISUALAI\website\static\resources\models\yolo11l.pt").to("cuda")
         self.model.overrides["verbose"] = False
+
+        self.blazing_model = BlazingModel(r"C:\xampp\htdocs\VISUALAI\website\static\resources\models\blazing\weights\best.pt", confidence_threshold=0)
 
         self.trail_map_polygon = Polygon()
         self.trail_map_mask = np.zeros((self.process_size[1], self.process_size[0], 3), dtype=np.uint8)
@@ -141,6 +163,13 @@ class SpreadingManual:
                     # cvzone.putTextRect(output_frame, f"{class_id}", (x1, y1 - 15))
                     detected = True
                     break  # Karena satu ROI maksimal satu objek
+
+        # Pendeteksian dengan BlazingModel
+        blazing_detections = self.blazing_model.detect(frame_resized)
+        for det in blazing_detections:
+            x1, y1, x2, y2, class_id, conf = det
+            cvzone.cornerRect(output_frame, (x1, y1, x2 - x1, y2 - y1), rt=0, l=8, t=2, colorC=(50, 0, 255))
+            cvzone.putTextRect(output_frame, f"{class_id}", (x1, y1 - 10), scale=0.5, thickness=1, offset=1)
 
         # Menggambar garis penghubung jika minimal dua ROI terdeteksi
         points = [pt for pt in detected_points.values() if pt is not None]

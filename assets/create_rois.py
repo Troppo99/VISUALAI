@@ -12,8 +12,8 @@ video_path = "rtsp://admin:oracle2015@172.16.0.145:554/Streaming/Channels/1"
 # video_path = "C:/path/to/image.jpg"
 
 # Direktori tempat file JSON akan disimpan
-OUTPUT_DIRECTORY = r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf"
-os.makedirs(OUTPUT_DIRECTORY, exist_ok=True)
+# OUTPUT_DIRECTORY = r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf"
+# os.makedirs(OUTPUT_DIRECTORY, exist_ok=True)
 
 # Resolusi asli dan baru
 ORIGINAL_WIDTH = 960
@@ -133,13 +133,13 @@ def print_borders():
     print(f"Scaled Borders = {scaled_borders}")
 
     # Simpan ke file JSON
-    output_file = os.path.join(OUTPUT_DIRECTORY, f"{file_name}_scaled.json")
-    try:
-        with open(output_file, "w", encoding="utf-8") as f:
-            json.dump(scaled_borders, f, indent=2)
-        print(f"Koordinat yang diskalakan telah disimpan di: {output_file}")
-    except Exception as e:
-        print(f"Error menyimpan file JSON: {e}")
+    # output_file = os.path.join(OUTPUT_DIRECTORY, f"{file_name}_scaled.json")
+    # try:
+    #     with open(output_file, "w", encoding="utf-8") as f:
+    #         json.dump(scaled_borders, f, indent=2)
+    #     print(f"Koordinat yang diskalakan telah disimpan di: {output_file}")
+    # except Exception as e:
+    #     print(f"Error menyimpan file JSON: {e}")
 
 
 def main():

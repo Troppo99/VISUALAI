@@ -20,13 +20,13 @@ def export_frame(frame):
 
 
 videos = [
-    0,
+    r"C:\xampp\htdocs\VISUALAI\website\static\videos\spreading_manual.mp4",
     "rtsp://admin:oracle2015@172.16.0.43:554/Streaming/Channels/1",
     "videos/test/kon.mp4",
 ]
 n = 0
 cap = cv2.VideoCapture(videos[n])
-model = YOLO("qc-project/models/best.pt")
+model = YOLO(r"C:\xampp\htdocs\VISUALAI\website\static\resources\models\blazing\weights\best.pt")
 model.overrides["verbose"] = False
 
 while True:
