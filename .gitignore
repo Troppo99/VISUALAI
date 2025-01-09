@@ -20,3 +20,5 @@ bd_run-*.py
 **/datasets/*
 **/models/*
 yolo11n.pt
+
+YOLO11/*

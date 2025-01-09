@@ -20,13 +20,6 @@ class SpreadingManual:
         self.model = YOLO(r"C:\xampp\htdocs\VISUALAI\website\static\resources\models\yolo11l.pt").to("cuda")
         self.model.overrides["verbose"] = False
 
-        # if len(self.rois) > 1:
-        #     self.union_roi = unary_union(self.rois)
-        # elif len(self.rois) == 1:
-        #     self.union_roi = self.rois[0]
-        # else:
-        # self.union_roi = None
-
         self.trail_map_polygon = Polygon()
         self.trail_map_mask = np.zeros((self.process_size[1], self.process_size[0], 3), dtype=np.uint8)
 
@@ -55,15 +48,15 @@ class SpreadingManual:
                     scaled_rois.append(polygon)
         return scaled_rois, ip
 
-    # def draw_rois(self, frame):
-    #     if not self.rois:
-    #         return
-    #     for roi in self.rois:
-    #         if roi.geom_type != "Polygon":
-    #             continue
-    #         pts = np.array(roi.exterior.coords, np.int32)
-    #         pts = pts.reshape((-1, 1, 2))
-    #         cv2.polylines(frame, [pts], True, (0, 255, 0), 2)
+    def draw_rois(self, frame):
+        if not self.rois:
+            return
+        for roi in self.rois:
+            if roi.geom_type != "Polygon":
+                continue
+            pts = np.array(roi.exterior.coords, np.int32)
+            pts = pts.reshape((-1, 1, 2))
+            cv2.polylines(frame, [pts], True, (0, 255, 0), 2)
 
     def choose_video_source(self):
         if self.video_source is None:
@@ -128,18 +121,34 @@ class SpreadingManual:
 
     def process_frame(self, frame):
         frame_resized = cv2.resize(frame, self.process_size)
+        self.draw_rois(frame_resized)
         boxes = self.export_frame(frame_resized)
         output_frame = frame_resized.copy()
         detected = False
+
+        # Dictionary to store detected points per ROI
+        detected_points = {i: None for i in range(len(self.rois))}
+
         for box in boxes:
             x1, y1, x2, y2, class_id = box
             overlap_results = self.check_overlap(x1, y1, x2, y2)
-            if any(overlap_results):
-                cvzone.cornerRect(output_frame, (x1, y1, x2 - x1, y2 - y1), rt=0, colorC=(0, 255, 255))
-                cvzone.putTextRect(output_frame, f"{class_id}", (x1, y1 - 15))
-                detected = True
-            # if detected:
-            #     pass
+            for idx, is_overlapping in enumerate(overlap_results):
+                if is_overlapping and detected_points[idx] is None:
+                    # Simpan titik (x1, y1) untuk ROI ini
+                    detected_points[idx] = (x1, y1)
+                    # Gambar bounding box dan label
+                    cvzone.cornerRect(output_frame, (x1, y1, x2 - x1, y2 - y1), rt=0, t=2, colorC=(0, 255, 255))
+                    # cvzone.putTextRect(output_frame, f"{class_id}", (x1, y1 - 15))
+                    detected = True
+                    break  # Karena satu ROI maksimal satu objek
+
+        # Menggambar garis penghubung jika minimal dua ROI terdeteksi
+        points = [pt for pt in detected_points.values() if pt is not None]
+        if len(points) >= 2:
+            # Misalkan kita hanya menghubungkan dua ROI pertama yang terdeteksi
+            pt1, pt2 = points[:2]
+            cv2.line(output_frame, pt1, pt2, (255, 0, 0), 2)  # Garis berwarna biru dengan ketebalan 2
+
         return output_frame
 
     def main(self):
@@ -214,5 +223,9 @@ class SpreadingManual:
 
 
 if __name__ == "__main__":
-    sm = SpreadingManual(camera_name="CUTTING4", video_source=r"C:\xampp\htdocs\VISUALAI\website\static\videos\spreading_manual.mp4", window_size=(960, 540))
+    sm = SpreadingManual(
+        camera_name="CUTTING4",
+        video_source=r"C:\xampp\htdocs\VISUALAI\website\static\videos\spreading_manual.mp4",
+        # window_size=(960, 540),
+    )
     sm.main()

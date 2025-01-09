@@ -4,7 +4,7 @@ import os
 import json
 
 # Input source (RTSP link, local video file, image file)
-file_name = "SEWING1"
+file_name = "coordinates"
 video_path = "rtsp://admin:oracle2015@172.16.0.145:554/Streaming/Channels/1"
 # Contoh lainnya:
 # video_path = "rtsp://username:password@ip_address:554/Streaming/Channels/1"
@@ -12,7 +12,7 @@ video_path = "rtsp://admin:oracle2015@172.16.0.145:554/Streaming/Channels/1"
 # video_path = "C:/path/to/image.jpg"
 
 # Direktori tempat file JSON akan disimpan
-OUTPUT_DIRECTORY = r"C:\xampp\htdocs\VISUALAI\coords"
+OUTPUT_DIRECTORY = r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf"
 os.makedirs(OUTPUT_DIRECTORY, exist_ok=True)
 
 # Resolusi asli dan baru
