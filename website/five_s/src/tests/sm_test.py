@@ -3,26 +3,6 @@ from ultralytics import YOLO
 from shapely.geometry import Polygon
 
 
-class BlazingModel:
-    def __init__(self, model_path, confidence_threshold=0.5, device="cuda"):
-        self.confidence_threshold = confidence_threshold
-        self.model = YOLO(model_path).to(device)
-        self.model.overrides["verbose"] = False
-
-    def detect(self, frame):
-        with torch.no_grad():
-            results = self.model(frame, stream=True, imgsz=640)
-        detections = []
-        for result in results:
-            for box in result.boxes:
-                x1, y1, x2, y2 = map(int, box.xyxy[0])
-                conf = box.conf[0].item()
-                class_id = self.model.names[int(box.cls[0])]
-                if conf > self.confidence_threshold:
-                    detections.append((x1, y1, x2, y2, class_id, conf))
-        return detections
-
-
 class SpreadingManual:
     def __init__(self, confidence_threshold=0.5, video_source=None, camera_name=None, window_size=(320, 240), stop_event=None):
         self.stop_event = stop_event
@@ -38,8 +18,8 @@ class SpreadingManual:
         self.choose_video_source()
         self.prev_frame_time = 0
 
-        # Inisialisasi model Blazing
-        self.blazing_model = BlazingModel(r"C:\xampp\htdocs\VISUALAI\website\static\resources\models\blazing\weights\best.pt", confidence_threshold=0.5)
+        self.model = YOLO(r"C:\xampp\htdocs\VISUALAI\website\static\resources\models\blazing\weights\best.pt").to("cuda")
+        self.model.overrides["verbose"] = False
 
         self.trail_map_polygon = Polygon()
         self.trail_map_mask = np.zeros((self.process_size[1], self.process_size[0], 3), dtype=np.uint8)
@@ -49,14 +29,12 @@ class SpreadingManual:
         self.start_run_time = time.time()
         self.capture_done = False
 
-        # Checklist Variables
-        self.bullmer_idle = True  # Asumsi awal: Bullmer diam
-        self.blazing_moving = False  # Status pergerakan Blazing
+        self.bullmer_idle = True
+        self.blazing_moving = False
 
-        # Overlap Tracking Variables
         self.overlap_count = 0
         self.last_overlap_time = 0
-        self.cooldown_duration = 5  # detik
+        self.cooldown_duration = 5
 
     def camera_config(self):
         with open(r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf\camera_config.json", "r") as f:
@@ -76,7 +54,7 @@ class SpreadingManual:
                 polygon = Polygon(scaled_group)
                 if polygon.is_valid:
                     scaled_rois.append(polygon)
-        # Keep only ROI 2 (index 2)
+
         if len(scaled_rois) >= 3:
             scaled_rois = [scaled_rois[2]]
         else:
@@ -134,54 +112,42 @@ class SpreadingManual:
             cap.release()
 
     def check_overlap(self, bbox, roi):
-        """
-        Mengecek apakah bounding box overlap dengan ROI tertentu.
-        bbox: Tuple (x1, y1, x2, y2)
-        roi: Shapely Polygon
-        """
         x1, y1, x2, y2 = bbox
         main_box = Polygon([(x1, y1), (x2, y1), (x2, y2), (x1, y2)])
         return main_box.intersects(roi)
+
+    def export_frame(self, frame):
+        with torch.no_grad():
+            results = self.model(frame, stream=True, imgsz=self.process_size[0])
+        boxes = []
+        for result in results:
+            for box in result.boxes:
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                conf = box.conf[0].item()
+                class_id = self.model.names[int(box.cls[0])]
+                if conf > self.confidence_threshold:
+                    boxes.append((x1, y1, x2, y2, class_id, conf))
+        return boxes
 
     def process_frame(self, frame):
         frame_resized = cv2.resize(frame, self.process_size)
         # self.draw_rois(frame_resized)
         output_frame = frame_resized.copy()
 
-        # Pendeteksian dengan BlazingModel
-        blazing_detections = self.blazing_model.detect(frame_resized)
-        for det in blazing_detections:
-            x1, y1, x2, y2, class_id, conf = det
-            # Gambar bounding box untuk Blazing
+        boxes = self.export_frame(frame_resized)
+        for box in boxes:
+            x1, y1, x2, y2, class_id, conf = box
             cvzone.cornerRect(output_frame, (x1, y1, x2 - x1, y2 - y1), rt=0, l=8, t=2, colorC=(50, 0, 255))
             cvzone.putTextRect(output_frame, f"{class_id}: {conf:.2f}", (x1, y1 - 10), scale=0.5, thickness=1, offset=1)
-            # Cek apakah Blazing overlap dengan ROI 2
             if self.check_overlap((x1, y1, x2, y2), self.rois[0]):
                 current_time = time.time()
                 if current_time - self.last_overlap_time > self.cooldown_duration:
                     self.overlap_count += 1
                     self.last_overlap_time = current_time
                     print("SPREADING MANUAL")
-                    # Optional: Set status pergerakan Blazing jika diperlukan
-                # Set status pergerakan Blazing
                 self.blazing_moving = True
             else:
                 self.blazing_moving = False
-
-        # Menampilkan Checklist di Frame
-        # checklist_text = f"Apakah bullmer diam : {'Ya' if self.bullmer_idle else 'Tidak'}\n" f"Apakah blazing bergerak : {'Ya' if self.blazing_moving else 'Tidak'}"
-
-        # Tentukan ukuran dan posisi overlay
-        # overlay = output_frame.copy()
-        # x, y, w, h = 10, frame_resized.shape[0] - 60, 300, 60  # Posisi dan ukuran rectangle
-        # cv2.rectangle(overlay, (x, y), (x + w, y + h), (0, 0, 0), -1)  # Hitam solid
-        # alpha = 0.5  # Transparansi 50%
-        # cv2.addWeighted(overlay, alpha, output_frame, 1 - alpha, 0, output_frame)
-
-        # Menampilkan teks checklist di atas overlay
-        # for i, line in enumerate(checklist_text.split("\n")):
-        #     cv2.putText(output_frame, line, (x + 10, y + 20 + i * 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
-
         return output_frame
 
     def main(self):
@@ -258,6 +224,6 @@ if __name__ == "__main__":
     sm = SpreadingManual(
         camera_name="CUTTING4",
         video_source=r"C:\xampp\htdocs\VISUALAI\website\static\videos\spreading_manual.mp4",
-        # window_size=(960, 540),
+        window_size=(960, 540),
     )
     sm.main()
