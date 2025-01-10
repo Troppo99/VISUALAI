@@ -54,11 +54,6 @@ class SpreadingManual:
                 polygon = Polygon(scaled_group)
                 if polygon.is_valid:
                     scaled_rois.append(polygon)
-
-        if len(scaled_rois) >= 3:
-            scaled_rois = [scaled_rois[2]]
-        else:
-            raise ValueError("ROI 2 tidak ditemukan dalam konfigurasi.")
         return scaled_rois, ip
 
     def draw_rois(self, frame):
