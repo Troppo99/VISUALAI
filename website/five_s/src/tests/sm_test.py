@@ -53,10 +53,11 @@ class SpreadingManual:
 
         # Timer dan Checklist Variables
         self.checklist_start_time = time.time()
-        self.checklist_duration = 60  # detik (2 menit)
+        self.checklist_duration = 60  # detik (1 menit)
         self.checklist_done = False
         self.bullmer_idle = True  # Asumsi awal: Tidak bergerak
-        self.two_people_detected = False
+        self.two_people_detected_summary = False  # Hasil akhir deteksi dua orang
+        self.two_people_accumulated_time = 0  # Akumulasi durasi deteksi dua orang
         self.blazing_moving = False
 
     def camera_config(self):
@@ -139,7 +140,7 @@ class SpreadingManual:
                 conf = box.conf[0].item()
                 class_id = self.model.names[int(box.cls[0])]
                 if conf > self.confidence_threshold:
-                    boxes.append((x1, y1, x2, y2, class_id))
+                    boxes.append((x1, y1, x2, y2, class_id, conf))
         return boxes
 
     def check_overlap(self, bbox, roi):
@@ -154,32 +155,39 @@ class SpreadingManual:
 
     def process_frame(self, frame):
         frame_resized = cv2.resize(frame, self.process_size)
-        self.draw_rois(frame_resized)
+        # self.draw_rois(frame_resized)
         yolo_boxes = self.export_frame(frame_resized)
         output_frame = frame_resized.copy()
 
-        # Dictionary untuk menyimpan titik terdeteksi per ROI
-        detected_points = {i: None for i in range(len(self.rois))}
-
-        # Track detections di ROIs 0 dan 1 untuk dua orang
-        detected_in_rois = [False, False]  # ROIs 0 dan 1
+        # Dictionary untuk menyimpan deteksi per ROI
+        detections_per_roi = {0: [], 1: []}  # Fokus hanya pada ROI 0 dan ROI 1
 
         for box in yolo_boxes:
-            x1, y1, x2, y2, class_id = box
-            for idx, roi in enumerate(self.rois):
-                if idx >= 2:  # Hanya cek untuk ROIs 0 dan 1
-                    continue
-                if self.check_overlap((x1, y1, x2, y2), roi) and detected_points[idx] is None:
-                    # Simpan titik untuk ROI ini
-                    detected_points[idx] = (x1, y1)
-                    # Gambar bounding box
-                    cvzone.cornerRect(output_frame, (x1, y1, x2 - x1, y2 - y1), rt=0, l=15, t=2, colorC=(0, 255, 255))
-                    detected_in_rois[idx] = True
-                    break  # Karena satu ROI maksimal satu objek
+            x1, y1, x2, y2, class_id, conf = box  # Pastikan unpack dengan benar
+            for idx in [0, 1]:  # Hanya periksa ROI 0 dan ROI 1
+                roi = self.rois[idx]
+                if self.check_overlap((x1, y1, x2, y2), roi):
+                    detections_per_roi[idx].append(box)
+                    break  # Asumsi satu deteksi per ROI, jadi keluar dari loop ROIs
 
-        # Jika kedua ROIs 0 dan 1 terdeteksi, set two_people_detected
-        if all(detected_in_rois):
-            self.two_people_detected = True
+        # Pilih deteksi dengan confidence tertinggi untuk setiap ROI
+        selected_detections = {}
+        for idx in [0, 1]:
+            if detections_per_roi[idx]:
+                # Pilih deteksi dengan confidence tertinggi
+                selected_box = max(detections_per_roi[idx], key=lambda x: x[5])  # x[5] adalah confidence
+                selected_detections[idx] = selected_box
+
+        # Tandai apakah dua orang terdeteksi
+        self.current_two_people_detected = len(selected_detections) == 2
+
+        # Gambar bounding box dan simpan titik deteksi
+        detected_points = {}
+        for idx, box in selected_detections.items():
+            x1, y1, x2, y2, class_id, conf = box
+            detected_points[idx] = (x1, y1)
+            # Gambar bounding box dengan warna kuning
+            cvzone.cornerRect(output_frame, (x1, y1, x2 - x1, y2 - y1), rt=0, l=15, t=2, colorC=(0, 255, 255))
 
         # Pendeteksian dengan BlazingModel
         blazing_detections = self.blazing_model.detect(frame_resized)
@@ -193,16 +201,30 @@ class SpreadingManual:
                 self.blazing_moving = True
 
         # Menggambar garis penghubung jika dua orang terdeteksi
-        if self.two_people_detected and detected_points[0] and detected_points[1]:
+        if self.current_two_people_detected and 0 in detected_points and 1 in detected_points:
             pt1, pt2 = detected_points[0], detected_points[1]
             cv2.line(output_frame, pt1, pt2, (255, 0, 0), 2)  # Garis biru
 
+        # Update akumulasi deteksi dua orang
+        current_time = time.time()
+        frame_duration = 1 / self.fps if hasattr(self, "fps") and self.fps > 0 else 0.04  # Default 25 FPS ~ 0.04 detik
+
+        if self.current_two_people_detected:
+            self.two_people_accumulated_time += frame_duration
+            # Batasi akumulasi hingga 10 detik
+            self.two_people_accumulated_time = min(self.two_people_accumulated_time, 10)
+        else:
+            pass
+
+        accumulated_minutes = int(self.two_people_accumulated_time) // 60
+        accumulated_seconds = int(self.two_people_accumulated_time) % 60
+        accumulated_timer_text = f"v: {accumulated_minutes:02}:{accumulated_seconds:02}"
+        checklist_text = f"Apakah terdapat dua orang : {'Ya' if self.two_people_detected_summary else 'Tidak'} {accumulated_timer_text}\n" f"Apakah bullmer diam : {'Ya'}\n" f"Apakah blazing bergerak : {'Ya' if self.blazing_moving else 'Tidak'}"
         # Menampilkan Checklist di Frame
-        checklist_text = f"Apakah terdapat dua orang : {'Ya' if self.two_people_detected else 'Tidak'}\n" f"Apakah bullmer diam : {'Ya'}\n" f"Apakah blazing bergerak : {'Ya' if self.blazing_moving else 'Tidak'}"
 
         # Tentukan ukuran dan posisi overlay
         overlay = output_frame.copy()
-        x, y, w, h = 10, frame_resized.shape[0] - 80, 300, 60  # Posisi dan ukuran rectangle
+        x, y, w, h = 10, frame_resized.shape[0] - 100, 300, 90  # Posisi dan ukuran rectangle (ditambah tinggi untuk akumulasi)
         cv2.rectangle(overlay, (x, y), (x + w, y + h), (0, 0, 0), -1)  # Hitam solid
         alpha = 0.5  # Transparansi 50%
         cv2.addWeighted(overlay, alpha, output_frame, 1 - alpha, 0, output_frame)
@@ -212,7 +234,6 @@ class SpreadingManual:
             cv2.putText(output_frame, line, (x + 10, y + 20 + i * 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
         # Menampilkan Countdown Timer di Frame
-        current_time = time.time()
         elapsed_time = current_time - self.checklist_start_time
         remaining_time = max(int(self.checklist_duration - elapsed_time), 0)
         minutes = remaining_time // 60
@@ -231,22 +252,27 @@ class SpreadingManual:
         # Timer dan Simpulan
         if not self.checklist_done and elapsed_time >= self.checklist_duration:
             # Tentukan simpulan
-            if not self.two_people_detected and not self.bullmer_idle and not self.blazing_moving:
-                conclusion = "SPREADING DENGAN BULLMER"
-            elif self.two_people_detected and self.bullmer_idle and self.blazing_moving:
+            if self.two_people_accumulated_time >= 10 and self.bullmer_idle and self.blazing_moving:
+                self.two_people_detected_summary = True
+            else:
+                self.two_people_detected_summary = False
+
+            # Cetak simpulan ke console
+            conclusion = ""
+            if self.two_people_detected_summary == True:
                 conclusion = "SPREADING MANUAL"
             else:
                 conclusion = "Deteksi Tidak Dapat Disimpulkan"
-
-            # Cetak simpulan ke console
             print(conclusion)
 
             # Reset checklist variables untuk siklus berikutnya
             self.checklist_start_time = current_time
             self.checklist_done = False
-            self.two_people_detected = False
-            self.blazing_moving = False
+            self.two_people_accumulated_time = 0
+            self.two_people_detected_summary = False
             # Bullmer tetap idle untuk siklus berikutnya
+            self.bullmer_idle = True
+            self.blazing_moving = False
 
         return output_frame
 
@@ -274,7 +300,7 @@ class SpreadingManual:
                         continue
                     current_time = time.time()
                     time_diff = current_time - self.prev_frame_time
-                    self.fps = 1 / time_diff if time_diff > 0 else 0
+                    self.fps = 1 / time_diff if time_diff > 0 else 25  # Default FPS jika time_diff nol
                     self.prev_frame_time = current_time
                     frame_resized = self.process_frame(frame)
                     cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
@@ -302,7 +328,7 @@ class SpreadingManual:
                         continue
                     current_time = time.time()
                     time_diff = current_time - self.prev_frame_time
-                    self.fps = 1 / time_diff if time_diff > 0 else 0
+                    self.fps = 1 / time_diff if time_diff > 0 else 25  # Default FPS jika time_diff nol
                     self.prev_frame_time = current_time
                     frame_resized = self.process_frame(frame)
                     cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
