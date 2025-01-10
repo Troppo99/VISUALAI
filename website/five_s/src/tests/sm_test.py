@@ -1,4 +1,13 @@
-import threading, time, numpy as np, json, cv2, os, queue, math, torch, cvzone
+import threading
+import time
+import numpy as np
+import json
+import cv2
+import os
+import queue
+import math
+import torch
+import cvzone
 from ultralytics import YOLO
 from shapely.geometry import Polygon
 
@@ -40,7 +49,8 @@ class SpreadingManual:
         self.model = YOLO(r"C:\xampp\htdocs\VISUALAI\website\static\resources\models\yolo11l.pt").to("cuda")
         self.model.overrides["verbose"] = False
 
-        self.blazing_model = BlazingModel(r"C:\xampp\htdocs\VISUALAI\website\static\resources\models\blazing\weights\best.pt", confidence_threshold=0)
+        # Inisialisasi model Blazing
+        self.blazing_model = BlazingModel(r"C:\xampp\htdocs\VISUALAI\website\static\resources\models\blazing\weights\best.pt", confidence_threshold=0.5)
 
         self.trail_map_polygon = Polygon()
         self.trail_map_mask = np.zeros((self.process_size[1], self.process_size[0], 3), dtype=np.uint8)
@@ -49,6 +59,14 @@ class SpreadingManual:
         self.trail_map_start_time = None
         self.start_run_time = time.time()
         self.capture_done = False
+
+        # Timer dan Checklist Variables
+        self.checklist_start_time = time.time()
+        self.checklist_duration = 60  # detik (2 menit)
+        self.checklist_done = False
+        self.bullmer_idle = True  # Asumsi awal: Tidak bergerak
+        self.two_people_detected = False
+        self.blazing_moving = False
 
     def camera_config(self):
         with open(r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf\camera_config.json", "r") as f:
@@ -83,7 +101,9 @@ class SpreadingManual:
     def choose_video_source(self):
         if self.video_source is None:
             self.frame_queue = queue.Queue(maxsize=10)
-            self.frame_thread = None
+            self.frame_thread = threading.Thread(target=self.capture_frame)
+            self.frame_thread.daemon = True
+            self.frame_thread.start()
             self.video_fps = None
             self.is_local_video = False
             self.video_source = f"rtsp://admin:oracle2015@{self.ip_camera}:554/Streaming/Channels/1"
@@ -125,63 +145,121 @@ class SpreadingManual:
         for result in results:
             for box in result.boxes:
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
-                conf = box.conf[0]
+                conf = box.conf[0].item()
                 class_id = self.model.names[int(box.cls[0])]
                 if conf > self.confidence_threshold:
                     boxes.append((x1, y1, x2, y2, class_id))
         return boxes
 
-    def check_overlap(self, x1, y1, x2, y2):
+    def check_overlap(self, bbox, roi):
+        """
+        Mengecek apakah bounding box overlap dengan ROI tertentu.
+        bbox: Tuple (x1, y1, x2, y2)
+        roi: Shapely Polygon
+        """
+        x1, y1, x2, y2 = bbox
         main_box = Polygon([(x1, y1), (x2, y1), (x2, y2), (x1, y2)])
-        overlap_results = []
-        for roi in self.rois:
-            intersection_area = main_box.intersection(roi).area
-            union_area = main_box.union(roi).area
-            iou = intersection_area / union_area if union_area != 0 else 0
-            overlap_results.append(iou > 0)
-        return overlap_results
+        return main_box.intersects(roi)
 
     def process_frame(self, frame):
         frame_resized = cv2.resize(frame, self.process_size)
         self.draw_rois(frame_resized)
-        boxes = self.export_frame(frame_resized)
+        yolo_boxes = self.export_frame(frame_resized)
         output_frame = frame_resized.copy()
-        detected = False
 
-        # Dictionary to store detected points per ROI
+        # Dictionary untuk menyimpan titik terdeteksi per ROI
         detected_points = {i: None for i in range(len(self.rois))}
 
-        for box in boxes:
+        # Track detections di ROIs 0 dan 1 untuk dua orang
+        detected_in_rois = [False, False]  # ROIs 0 dan 1
+
+        for box in yolo_boxes:
             x1, y1, x2, y2, class_id = box
-            overlap_results = self.check_overlap(x1, y1, x2, y2)
-            for idx, is_overlapping in enumerate(overlap_results):
-                if is_overlapping and detected_points[idx] is None:
-                    # Simpan titik (x1, y1) untuk ROI ini
+            for idx, roi in enumerate(self.rois):
+                if idx >= 2:  # Hanya cek untuk ROIs 0 dan 1
+                    continue
+                if self.check_overlap((x1, y1, x2, y2), roi) and detected_points[idx] is None:
+                    # Simpan titik untuk ROI ini
                     detected_points[idx] = (x1, y1)
-                    # Gambar bounding box dan label
-                    cvzone.cornerRect(output_frame, (x1, y1, x2 - x1, y2 - y1), rt=0, t=2, colorC=(0, 255, 255))
-                    # cvzone.putTextRect(output_frame, f"{class_id}", (x1, y1 - 15))
-                    detected = True
+                    # Gambar bounding box
+                    cvzone.cornerRect(output_frame, (x1, y1, x2 - x1, y2 - y1), rt=0, l=15, t=2, colorC=(0, 255, 255))
+                    detected_in_rois[idx] = True
                     break  # Karena satu ROI maksimal satu objek
+
+        # Jika kedua ROIs 0 dan 1 terdeteksi, set two_people_detected
+        if all(detected_in_rois):
+            self.two_people_detected = True
 
         # Pendeteksian dengan BlazingModel
         blazing_detections = self.blazing_model.detect(frame_resized)
         for det in blazing_detections:
             x1, y1, x2, y2, class_id, conf = det
+            # Gambar bounding box untuk Blazing
             cvzone.cornerRect(output_frame, (x1, y1, x2 - x1, y2 - y1), rt=0, l=8, t=2, colorC=(50, 0, 255))
-            cvzone.putTextRect(output_frame, f"{class_id}", (x1, y1 - 10), scale=0.5, thickness=1, offset=1)
+            cvzone.putTextRect(output_frame, f"{class_id}: {conf:.2f}", (x1, y1 - 10), scale=0.5, thickness=1, offset=1)
+            # Cek apakah Blazing overlap dengan ROI ketiga (indeks 2)
+            if not self.blazing_moving and self.check_overlap((x1, y1, x2, y2), self.rois[2]):
+                self.blazing_moving = True
 
-        # Menggambar garis penghubung jika minimal dua ROI terdeteksi
-        points = [pt for pt in detected_points.values() if pt is not None]
-        if len(points) >= 2:
-            # Misalkan kita hanya menghubungkan dua ROI pertama yang terdeteksi
-            pt1, pt2 = points[:2]
-            cv2.line(output_frame, pt1, pt2, (255, 0, 0), 2)  # Garis berwarna biru dengan ketebalan 2
+        # Menggambar garis penghubung jika dua orang terdeteksi
+        if self.two_people_detected and detected_points[0] and detected_points[1]:
+            pt1, pt2 = detected_points[0], detected_points[1]
+            cv2.line(output_frame, pt1, pt2, (255, 0, 0), 2)  # Garis biru
+
+        # Menampilkan Checklist di Frame
+        checklist_text = f"Apakah terdapat dua orang : {'Ya' if self.two_people_detected else 'Tidak'}\n" f"Apakah bullmer diam : {'Ya'}\n" f"Apakah blazing bergerak : {'Ya' if self.blazing_moving else 'Tidak'}"
+
+        # Tentukan ukuran dan posisi overlay
+        overlay = output_frame.copy()
+        x, y, w, h = 10, frame_resized.shape[0] - 80, 300, 60  # Posisi dan ukuran rectangle
+        cv2.rectangle(overlay, (x, y), (x + w, y + h), (0, 0, 0), -1)  # Hitam solid
+        alpha = 0.5  # Transparansi 50%
+        cv2.addWeighted(overlay, alpha, output_frame, 1 - alpha, 0, output_frame)
+
+        # Menampilkan teks checklist di atas overlay
+        for i, line in enumerate(checklist_text.split("\n")):
+            cv2.putText(output_frame, line, (x + 10, y + 20 + i * 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+
+        # Menampilkan Countdown Timer di Frame
+        current_time = time.time()
+        elapsed_time = current_time - self.checklist_start_time
+        remaining_time = max(int(self.checklist_duration - elapsed_time), 0)
+        minutes = remaining_time // 60
+        seconds = remaining_time % 60
+        timer_text = f"Timer: {minutes:02}:{seconds:02}"
+
+        # Tentukan posisi timer (pojok kanan atas)
+        timer_x, timer_y = frame_resized.shape[1] - 150, 30
+        # Membuat overlay untuk timer
+        overlay_timer = output_frame.copy()
+        cv2.rectangle(overlay_timer, (timer_x - 10, timer_y - 20), (timer_x + 140, timer_y + 20), (0, 0, 0), -1)
+        cv2.addWeighted(overlay_timer, alpha, output_frame, 1 - alpha, 0, output_frame)
+        # Menampilkan teks timer
+        cv2.putText(output_frame, timer_text, (timer_x, timer_y), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
+
+        # Timer dan Simpulan
+        if not self.checklist_done and elapsed_time >= self.checklist_duration:
+            # Tentukan simpulan
+            if not self.two_people_detected and not self.bullmer_idle and not self.blazing_moving:
+                conclusion = "SPREADING DENGAN BULLMER"
+            elif self.two_people_detected and self.bullmer_idle and self.blazing_moving:
+                conclusion = "SPREADING MANUAL"
+            else:
+                conclusion = "Deteksi Tidak Dapat Disimpulkan"
+
+            # Cetak simpulan ke console
+            print(conclusion)
+
+            # Reset checklist variables untuk siklus berikutnya
+            self.checklist_start_time = current_time
+            self.checklist_done = False
+            self.two_people_detected = False
+            self.blazing_moving = False
+            # Bullmer tetap idle untuk siklus berikutnya
 
         return output_frame
 
     def main(self):
-        # state = ""
         skip_frames = 2
         frame_count = 0
         window_name = f"SM:{self.camera_name}"
