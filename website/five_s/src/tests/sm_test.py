@@ -1,13 +1,4 @@
-import threading
-import time
-import numpy as np
-import json
-import cv2
-import os
-import queue
-import math
-import torch
-import cvzone
+import threading, time, numpy as np, json, cv2, os, queue, math, torch, cvzone
 from ultralytics import YOLO
 from shapely.geometry import Polygon
 
