@@ -145,7 +145,7 @@ class SpreadingManual:
 
     def process_frame(self, frame):
         frame_resized = cv2.resize(frame, self.process_size)
-        self.draw_rois(frame_resized)
+        # self.draw_rois(frame_resized)
         output_frame = frame_resized.copy()
 
         # Pendeteksian dengan BlazingModel
@@ -169,18 +169,18 @@ class SpreadingManual:
                 self.blazing_moving = False
 
         # Menampilkan Checklist di Frame
-        checklist_text = f"Apakah bullmer diam : {'Ya' if self.bullmer_idle else 'Tidak'}\n" f"Apakah blazing bergerak : {'Ya' if self.blazing_moving else 'Tidak'}"
+        # checklist_text = f"Apakah bullmer diam : {'Ya' if self.bullmer_idle else 'Tidak'}\n" f"Apakah blazing bergerak : {'Ya' if self.blazing_moving else 'Tidak'}"
 
         # Tentukan ukuran dan posisi overlay
-        overlay = output_frame.copy()
-        x, y, w, h = 10, frame_resized.shape[0] - 60, 300, 60  # Posisi dan ukuran rectangle
-        cv2.rectangle(overlay, (x, y), (x + w, y + h), (0, 0, 0), -1)  # Hitam solid
-        alpha = 0.5  # Transparansi 50%
-        cv2.addWeighted(overlay, alpha, output_frame, 1 - alpha, 0, output_frame)
+        # overlay = output_frame.copy()
+        # x, y, w, h = 10, frame_resized.shape[0] - 60, 300, 60  # Posisi dan ukuran rectangle
+        # cv2.rectangle(overlay, (x, y), (x + w, y + h), (0, 0, 0), -1)  # Hitam solid
+        # alpha = 0.5  # Transparansi 50%
+        # cv2.addWeighted(overlay, alpha, output_frame, 1 - alpha, 0, output_frame)
 
         # Menampilkan teks checklist di atas overlay
-        for i, line in enumerate(checklist_text.split("\n")):
-            cv2.putText(output_frame, line, (x + 10, y + 20 + i * 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+        # for i, line in enumerate(checklist_text.split("\n")):
+        #     cv2.putText(output_frame, line, (x + 10, y + 20 + i * 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
         return output_frame
 
