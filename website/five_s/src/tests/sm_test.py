@@ -18,7 +18,7 @@ class SpreadingManual:
         self.choose_video_source()
         self.prev_frame_time = 0
 
-        self.model = YOLO(r"C:\xampp\htdocs\VISUALAI\website\static\resources\models\blazing\weights\best.pt").to("cuda")
+        self.model = YOLO(r"C:\xampp\htdocs\VISUALAI\website\static\resources\models\spreading\weights\best.pt").to("cuda")
         self.model.overrides["verbose"] = False
 
         self.trail_map_polygon = Polygon()
@@ -31,10 +31,14 @@ class SpreadingManual:
 
         self.bullmer_idle = True
         self.blazing_moving = False
+        self.bullmer_moving = False
 
         self.overlap_count = 0
-        self.last_overlap_time = 0
-        self.cooldown_duration = 5
+        self.last_blazing_overlap_time = 0
+        self.last_bullmer_overlap_time = 0
+        self.blazing_cd = 5
+        self.bullmer_cd = 60
+        self.lock = threading.Lock()
 
     def camera_config(self):
         with open(r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf\camera_config.json", "r") as f:
@@ -134,15 +138,29 @@ class SpreadingManual:
             x1, y1, x2, y2, class_id, conf = box
             cvzone.cornerRect(output_frame, (x1, y1, x2 - x1, y2 - y1), rt=0, l=8, t=2, colorC=(50, 0, 255))
             cvzone.putTextRect(output_frame, f"{class_id}: {conf:.2f}", (x1, y1 - 10), scale=0.5, thickness=1, offset=1)
-            if self.check_overlap((x1, y1, x2, y2), self.rois[0]):
-                current_time = time.time()
-                if current_time - self.last_overlap_time > self.cooldown_duration:
-                    self.overlap_count += 1
-                    self.last_overlap_time = current_time
-                    print("SPREADING MANUAL")
-                self.blazing_moving = True
-            else:
-                self.blazing_moving = False
+            if class_id == "blazing":
+                if self.check_overlap((x1, y1, x2, y2), self.rois[0]):
+                    current_time = time.time()
+                    with self.lock:
+                        if current_time - self.last_blazing_overlap_time > self.blazing_cd:
+                            self.overlap_count += 1
+                            self.last_blazing_overlap_time = current_time
+                            print("SPREADING MANUAL")
+                        self.blazing_moving = True
+                else:
+                    self.blazing_moving = False
+            elif class_id == "bullmer":
+                if self.check_overlap((x1, y1, x2, y2), self.rois[1]):
+                    current_time = time.time()
+                    with self.lock:
+                        if current_time - self.last_bullmer_overlap_time > self.bullmer_cd:
+                            self.overlap_count += 1
+                            self.last_bullmer_overlap_time = current_time
+                            print("BULLMER BERGERAK")
+                        self.bullmer_moving = True
+                else:
+                    self.bullmer_moving = False
+
         return output_frame
 
     def main(self):
@@ -217,8 +235,8 @@ class SpreadingManual:
 
 if __name__ == "__main__":
     sm = SpreadingManual(
-        camera_name="CUTTING4",
-        video_source=r"C:\xampp\htdocs\VISUALAI\website\static\videos\spreading_manual.mp4",
+        camera_name="CUTTING3",
+        # video_source=r"C:\xampp\htdocs\VISUALAI\website\static\videos\spreading_manual.mp4",
         window_size=(960, 540),
     )
     sm.main()
