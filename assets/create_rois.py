@@ -5,9 +5,9 @@ import json
 
 
 def camera_config():
-    with open(r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf\camera_config.json", "r") as f:
+    with open(r"C:\xampp\htdocs\VISUALAI\website-django\static\resources\conf\camera_config.json", "r") as f:
         config = json.load(f)
-    ip = config["HALAMANDEPAN1"]["ip"]
+    ip = config["ROBOTIC"]["ip"]
     return ip
 
 

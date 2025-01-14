@@ -193,5 +193,9 @@
   "SEWINGOFFICE": {
     "ip": "172.16.0.32",
     "bd_rois": "//10.5.0.3/VISUALAI/website-django/static/resources/conf/bd_rois/SEWINGOFFICE.json"
+  },
+  "ROBOTIC":{
+    "ip": "10.5.5.1",
+    "cd_rois":"//10.5.0.3/VISUALAI/website-django/static/resources/conf/cd_rois/ROBOTIC.json"
   }
 }
