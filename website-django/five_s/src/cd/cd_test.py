@@ -136,9 +136,9 @@ class CarpalDetector:
 
     def process_frame(self, frame):
         frame_resized = cv2.resize(frame, self.process_size)
+        self.draw_rois(frame_resized)
+        keypoint_positions = self.export_frame(frame_resized)
         output_frame = frame_resized.copy()
-        self.draw_rois(output_frame)
-        keypoint_positions = self.export_frame(output_frame)
         detected = False
         for kp_list in keypoint_positions:
             for idx in [9, 10]:
