@@ -3,9 +3,18 @@ import math
 import os
 import json
 
+
+def camera_config():
+    with open(r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf\camera_config.json", "r") as f:
+        config = json.load(f)
+    ip = config["HALAMANDEPAN1"]["ip"]
+    return ip
+
+
 # Input source (RTSP link, local video file, image file)
 file_name = "coordinates"
-video_path = "rtsp://admin:oracle2015@172.16.0.145:554/Streaming/Channels/1"
+
+video_path = f"rtsp://admin:oracle2015@{camera_config()}:554/Streaming/Channels/1"
 # Contoh lainnya:
 # video_path = "rtsp://username:password@ip_address:554/Streaming/Channels/1"
 # video_path = "C:/path/to/video.mp4"

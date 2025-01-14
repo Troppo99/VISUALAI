@@ -39,7 +39,7 @@ class CarpalDetector:
             config = json.load(f)
         ip = config[self.camera_name]["ip"]
         scaled_rois = []
-        rois_path = config[self.camera_name]["bd_rois"]
+        rois_path = config[self.camera_name]["cd_rois"]
         with open(rois_path, "r") as rois_file:
             original_rois = json.load(rois_file)
         for roi_group in original_rois:
@@ -295,7 +295,7 @@ if __name__ == "__main__":
     from libs.DataHandler import DataHandler
 
     detector_args = {
-        "camera_name": "SEWING1",
+        "camera_name": "HALAMANDEPAN1",
         # "video_source": r"C:\xampp\htdocs\VISUALAI\archives\static\videos\bd_test.mp4",
     }
 
