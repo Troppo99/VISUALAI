@@ -1,5 +1,5 @@
 import cv2, cvzone, json, math, numpy as np, os, queue, threading, time, torch, sys
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, box
 from shapely.ops import unary_union
 from ultralytics import YOLO
 
@@ -39,7 +39,7 @@ class CarpalDetector:
         self.trail_map_start_time = None
         self.start_run_time = time.time()
         self.capture_done = False
-
+        self.final_overlap = 0
         self.pairs_human = [(0, 1), (0, 2), (1, 2), (2, 4), (1, 3), (4, 6), (3, 5), (5, 6), (6, 8), (8, 10), (5, 7), (7, 9), (6, 12), (12, 11), (11, 5), (12, 14), (14, 16), (11, 13), (13, 15)]
 
     def camera_config(self):
@@ -75,6 +75,7 @@ class CarpalDetector:
     def choose_video_source(self):
         if self.video_source is None:
             self.frame_queue = queue.Queue(maxsize=10)
+            self.frame_thread = None
             self.video_fps = None
             self.is_local_video = False
             self.video_source = f"rtsp://admin:oracle2015@{self.ip_camera}:554/Streaming/Channels/1"
@@ -185,7 +186,7 @@ class CarpalDetector:
         alpha = 0.5
         cv2.addWeighted(output_frame, 1.0, self.trail_map_mask, 1 - alpha, 0, output_frame)
         cvzone.putTextRect(output_frame, f"Overlap: {overlap_percentage:.2f}%", (10, 30), scale=1, thickness=2, offset=5)
-        return output_frame
+        return output_frame, overlap_percentage
 
     def reset_trail_map(self):
         print("Reset trail map.")
@@ -286,17 +287,12 @@ class CarpalDetector:
                 state = "Tidak Mengelap kaca"
             print(f"[{self.camera_name}] => {state}")
 
-            if "output_frame" in locals():
-                DataHandler(task="-C").save_data(output_frame, final_overlap, self.camera_name, insert=True)
+            if "frame_resized" in locals():
+                DataHandler(task="-C").save_data(frame_resized, final_overlap, self.camera_name, insert=False)
             else:
                 print("No frame to save.")
 
 
 if __name__ == "__main__":
-    detector_args = {
-        "camera_name": "HALAMANDEPAN1",
-        # "video_source": r"C:\xampp\htdocs\VISUALAI\archives\static\videos\bd_test.mp4",
-    }
-
-    detector = CarpalDetector(**detector_args)
+    detector = CarpalDetector(camera_name="ROBOTIC")
     detector.main()
