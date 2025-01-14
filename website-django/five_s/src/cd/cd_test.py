@@ -1,7 +1,12 @@
-import os, cv2, numpy as np, time, torch, cvzone, threading, queue, math, json
-from ultralytics import YOLO
-from shapely.geometry import Polygon, box
+import cv2, cvzone, json, math, numpy as np, os, queue, threading, time, torch, sys
+from shapely.geometry import Polygon
 from shapely.ops import unary_union
+from ultralytics import YOLO
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.join(current_dir, "..")
+sys.path.append(parent_dir)
+from libs.DataHandler import DataHandler
 
 
 class CarpalDetector:
@@ -179,6 +184,13 @@ class CarpalDetector:
         cvzone.putTextRect(output_frame, f"Overlap: {overlap_percentage:.2f}%", (10, 30), scale=1, thickness=2, offset=5)
         return output_frame
 
+    def reset_trail_map(self):
+        print("Reset trail map.")
+        self.trail_map_polygon = Polygon()
+        self.trail_map_mask = np.zeros((self.process_size[1], self.process_size[0], 3), dtype=np.uint8)
+        self.trail_map_start_time = None
+        self.capture_done = False
+
     def draw_polygon_on_mask(self, polygon, mask, color=(0, 255, 0)):
         if polygon.is_empty:
             return
@@ -195,24 +207,21 @@ class CarpalDetector:
                 pts = pts.reshape((-1, 1, 2))
                 cv2.fillPoly(mask, [pts], color)
 
-    def reset_trail_map(self):
-        print("Reset trail map.")
-        self.trail_map_polygon = Polygon()
-        self.trail_map_mask = np.zeros((self.process_size[1], self.process_size[0], 3), dtype=np.uint8)
-        self.trail_map_start_time = None
-        self.capture_done = False
-
     def main(self):
+        state = ""
         skip_frames = 2
         frame_count = 0
-        window_name = f"Carpal Detection: {self.camera_name}"
+        window_name = f"CD: {self.camera_name}"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(window_name, self.window_size)
+        final_overlap = 0
 
         try:
             if self.video_fps is None:
+                self.frame_queue = queue.Queue(maxsize=10)
                 self.frame_thread = threading.Thread(target=self.capture_frame, daemon=True)
                 self.frame_thread.start()
+
                 while not self.stop_event.is_set():
                     try:
                         frame = self.frame_queue.get(timeout=1)
@@ -225,25 +234,21 @@ class CarpalDetector:
                     time_diff = current_time - self.prev_frame_time
                     self.fps = 1 / time_diff if time_diff > 0 else 0
                     self.prev_frame_time = current_time
-                    output_frame = self.process_frame(frame)
-                    cvzone.putTextRect(output_frame, f"FPS: {int(self.fps)}", (10, 60), scale=1, thickness=2, offset=5)
-                    cv2.imshow(window_name, output_frame)
+                    frame_resized, final_overlap = self.process_frame(frame)
+                    cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
+                    cv2.imshow(window_name, frame_resized)
                     key = cv2.waitKey(1) & 0xFF
                     if key == ord("n") or key == ord("N"):
                         print("Manual stop detected.")
                         self.stop_event.set()
                         break
+
                 cv2.destroyAllWindows()
                 if self.frame_thread.is_alive():
                     self.frame_thread.join()
             else:
                 cap = cv2.VideoCapture(self.video_source)
-                if not cap.isOpened():
-                    print("Failed to open video source:", self.video_source)
-                    return
-
-                video_fps = self.video_fps if self.video_fps else 25
-                frame_delay = max(int(1000 / video_fps), 1)
+                frame_delay = int(1000 / self.video_fps)
                 while cap.isOpened() and not self.stop_event.is_set():
                     start_time = time.time()
                     ret, frame = cap.read()
@@ -257,11 +262,11 @@ class CarpalDetector:
                     time_diff = current_time - self.prev_frame_time
                     self.fps = 1 / time_diff if time_diff > 0 else 0
                     self.prev_frame_time = current_time
-                    output_frame = self.process_frame(frame)
-                    cvzone.putTextRect(output_frame, f"FPS: {int(self.fps)}", (10, 60), scale=1, thickness=2, offset=5)
+                    frame_resized, final_overlap = self.process_frame(frame)
+                    cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
+                    cv2.imshow(window_name, frame_resized)
                     processing_time = (time.time() - start_time) * 1000
                     adjusted_delay = max(int(frame_delay - processing_time), 1)
-                    cv2.imshow(window_name, output_frame)
                     key = cv2.waitKey(adjusted_delay) & 0xFF
                     if key == ord("n") or key == ord("N"):
                         print("Manual stop detected.")
@@ -269,17 +274,15 @@ class CarpalDetector:
                         break
                 cap.release()
                 cv2.destroyAllWindows()
-
         finally:
-            final_overlap = self.final_overlap
             if final_overlap >= 50:
                 state = "Mengelap kaca selesai"
             elif final_overlap >= 30:
                 state = "Mengelap kaca tidak selesai"
             else:
                 state = "Tidak Mengelap kaca"
+            print(f"[{self.camera_name}] => {state}")
 
-            print(f"[{self.camera_name}] Final overlap: {final_overlap:.2f}%, State: {state}")
             if "output_frame" in locals():
                 DataHandler(task="-C").save_data(output_frame, final_overlap, self.camera_name, insert=True)
             else:
@@ -287,13 +290,6 @@ class CarpalDetector:
 
 
 if __name__ == "__main__":
-    import sys
-
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    parent_dir = os.path.join(current_dir, "..")
-    sys.path.append(parent_dir)
-    from libs.DataHandler import DataHandler
-
     detector_args = {
         "camera_name": "HALAMANDEPAN1",
         # "video_source": r"C:\xampp\htdocs\VISUALAI\archives\static\videos\bd_test.mp4",
