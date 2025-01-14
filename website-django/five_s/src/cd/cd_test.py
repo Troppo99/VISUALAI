@@ -161,7 +161,6 @@ class CarpalDetector:
         if self.union_roi and not self.union_roi.is_empty:
             overlap_percentage = (self.trail_map_polygon.area / self.union_roi.area) * 100
 
-        self.final_overlap = overlap_percentage
         current_time = time.time()
         if detected:
             self.last_detection_time = current_time
