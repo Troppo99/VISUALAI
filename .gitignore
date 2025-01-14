@@ -6,8 +6,6 @@ archives/static/data/*
 
 **/images/*
 **/videos/*
-website/static/resources/*
-website/media/*
 
 *.pyc
 .draft.py
