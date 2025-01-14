@@ -33,14 +33,14 @@ class CarpalDetector:
         self.frame_queue = None
         self.choose_video_source()
         self.prev_frame_time = 0
-        self.model = YOLO(r"C:\xampp\htdocs\VISUALAI\website\static\resources\models\yolo11l-pose.pt").to("cuda")
+        self.model = YOLO(r"C:\xampp\htdocs\VISUALAI\website-django\static\resources\models\yolo11l-pose.pt").to("cuda")
         self.model.overrides["verbose"] = False
         self.stop_event = threading.Event()
         self.pairs_human = [(0, 1), (0, 2), (1, 2), (2, 4), (1, 3), (4, 6), (3, 5), (5, 6), (6, 8), (8, 10), (5, 7), (7, 9), (6, 12), (12, 11), (11, 5), (12, 14), (14, 16), (11, 13), (13, 15)]
         self.final_overlap = 0
 
     def camera_config(self):
-        with open(r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf\camera_config.json", "r") as f:
+        with open(r"C:\xampp\htdocs\VISUALAI\website-django\static\resources\conf\camera_config.json", "r") as f:
             config = json.load(f)
         ip = config[self.camera_name]["ip"]
         scaled_rois = []

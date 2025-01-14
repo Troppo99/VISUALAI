@@ -26,7 +26,7 @@ class BroomDetector:
         self.rois, self.ip_camera = self.camera_config()
         self.choose_video_source()
         self.prev_frame_time = 0
-        self.model = YOLO(r"C:\xampp\htdocs\VISUALAI\website\static\resources\models\bd6l.pt").to("cuda")
+        self.model = YOLO(r"C:\xampp\htdocs\VISUALAI\website-django\static\resources\models\bd6l.pt").to("cuda")
         self.model.overrides["verbose"] = False
 
         if len(self.rois) > 1:
@@ -45,7 +45,7 @@ class BroomDetector:
         self.capture_done = False
 
     def camera_config(self):
-        with open(r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf\camera_config.json", "r") as f:
+        with open(r"C:\xampp\htdocs\VISUALAI\website-django\static\resources\conf\camera_config.json", "r") as f:
             config = json.load(f)
         ip = config[self.camera_name]["ip"]
         scaled_rois = []
