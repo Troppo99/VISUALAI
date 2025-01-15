@@ -1,15 +1,16 @@
 from ultralytics import YOLO
 
 if __name__ == "__main__":
-    model = YOLO(r"C:\xampp\htdocs\VISUALAI\website\static\resources\models\yolo11l.pt")
+    model = YOLO(r"resources\models\yolo11l.pt")
     model.train(
-        data=r"C:\xampp\htdocs\VISUALAI\website\static\resources\datasets\spreading\data.yaml",
+        data=r"resources\datasets\defect1\data.yaml",
         epochs=100,
-        imgsz=640,
-        project=r"C:\xampp\htdocs\VISUALAI\website\static\resources\models",
-        name="spreading",
+        imgsz=1280,
+        project=r"resources\models",
+        name="defect1",
         device="cuda",
-        batch=16,
+        batch=8,
         resume=False,
         amp=True,
+        # precision=16,
     )

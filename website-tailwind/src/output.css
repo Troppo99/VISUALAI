@@ -556,6 +556,10 @@ video {
 
 .container {
   width: 100%;
+  margin-right: auto;
+  margin-left: auto;
+  padding-right: 16px;
+  padding-left: 16px;
 }
 
 @media (min-width: 640px) {
@@ -582,42 +586,8 @@ video {
   }
 }
 
-@media (min-width: 1536px) {
-  .container {
-    max-width: 1536px;
-  }
-}
-
-.w-full {
-  width: 100%;
-}
-
 .text-center {
   text-align: center;
-}
-
-.font-\[\] {
-  font-family: ;
-}
-
-.font-\[\"\"\] {
-  font-family: "";
-}
-
-.font-\[\"B\"\] {
-  font-family: "B";
-}
-
-.font-\[\"Dank\"\] {
-  font-family: "Dank";
-}
-
-.font-\[\"Dank-Mono\"\] {
-  font-family: "Dank-Mono";
-}
-
-.font-\[Dank-Mono\] {
-  font-family: Dank-Mono;
 }
 
 .text-3xl {
@@ -629,26 +599,12 @@ video {
   font-weight: 700;
 }
 
-.text-white {
+.text-primary {
   --tw-text-opacity: 1;
-  color: rgb(255 255 255 / var(--tw-text-opacity, 1));
-}
-
-.text-slate-900 {
-  --tw-text-opacity: 1;
-  color: rgb(15 23 42 / var(--tw-text-opacity, 1));
-}
-
-.text-slate-200 {
-  --tw-text-opacity: 1;
-  color: rgb(226 232 240 / var(--tw-text-opacity, 1));
+  color: rgb(14 165 233 / var(--tw-text-opacity, 1));
 }
 
 .text-slate-500 {
   --tw-text-opacity: 1;
   color: rgb(100 116 139 / var(--tw-text-opacity, 1));
-}
-
-.underline {
-  text-decoration-line: underline;
 }
