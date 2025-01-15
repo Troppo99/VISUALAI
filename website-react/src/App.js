@@ -1,12 +1,22 @@
 import React from 'react';
-import HelloComponent from './HelloComponent';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import Home from './pages/Home';
+import About from './pages/About';
 
-function Hello() {
+function App() {
   return (
-    <div className="App">
-      <HelloComponent name="NWR" />
-    </div>
+    <Router>
+      <nav className="p-4 bg-gray-100">
+        <Link to="/" className="mr-4">Home</Link>
+        <Link to="/about">About</Link>
+      </nav>
+
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/about" element={<About />} />
+      </Routes>
+    </Router>
   );
 }
 
-export default Hello;
+export default App;
