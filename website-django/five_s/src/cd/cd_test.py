@@ -188,7 +188,7 @@ class CarpalDetector:
         return output_frame, overlap_percentage
 
     def reset_trail_map(self):
-        print("Reset trail map.")
+        # print("Reset trail map.")
         self.trail_map_polygon = Polygon()
         self.trail_map_mask = np.zeros((self.process_size[1], self.process_size[0], 3), dtype=np.uint8)
         self.trail_map_start_time = None

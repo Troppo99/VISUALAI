@@ -2,13 +2,13 @@ import threading
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from pytz import timezone
-from bd_test import BroomDetector
+from cd_test import CarpalDetector
 
 
 class Scheduling:
-    def __init__(self, detector_args, broom_schedule_type):
+    def __init__(self, detector_args, schedule_type):
         self.detector_args = detector_args
-        self.broom_schedule_type = broom_schedule_type
+        self.schedule_type = schedule_type
         self.detector = None
         self.scheduler = BackgroundScheduler(
             timezone=timezone("Asia/Jakarta"),
@@ -20,34 +20,34 @@ class Scheduling:
     def start_detection(self):
         # playsound("output_gtts.mp3")
         if not self.detector:
-            print("Starting BroomDetector...")
-            self.detector = BroomDetector(**self.detector_args)
+            print("Starting CarpalDetector...")
+            self.detector = CarpalDetector(**self.detector_args)
             detection_thread = threading.Thread(target=self.detector.main)
             detection_thread.daemon = True
             detection_thread.start()
         else:
-            print("BroomDetector is already running.")
+            print("CarpalDetector is already running.")
 
     def stop_detection(self):
         if self.detector:
-            print("Stopping BroomDetector...")
+            print("Stopping CarpalDetector...")
             self.detector.stop_event.set()
             self.detector = None
         else:
-            print("BroomDetector is not running.")
+            print("CarpalDetector is not running.")
 
     def setup_schedule(self):
-        if self.broom_schedule_type == "OFFICE":
+        if self.schedule_type == "OFFICE":
             work_days = ["mon", "tue", "wed", "thu", "fri"]
             for day in work_days:
                 # S1 : 06:00 - 08:30
-                h1, m1, s1 = (6, 0, 0)
-                h2, m2, s2 = (8, 30, 0)
+                h1, m1, s1 = (13, 50, 0)
+                h2, m2, s2 = (13, 51, 10)
                 start_trigger = CronTrigger(day_of_week=day, hour=h1, minute=m1, second=s1)
                 self.scheduler.add_job(self.start_detection, trigger=start_trigger, id=f"start_{day}", replace_existing=True)
                 stop_trigger = CronTrigger(day_of_week=day, hour=h2, minute=m2, second=s2)
                 self.scheduler.add_job(self.stop_detection, trigger=stop_trigger, id=f"stop_{day}", replace_existing=True)
-        elif self.broom_schedule_type == "SEWING":
+        elif self.schedule_type == "SEWING":
             work_days = ["mon", "tue", "wed", "thu", "fri"]
             for day in work_days:
                 # S1 : 07:30 - 09:45
@@ -76,6 +76,6 @@ class Scheduling:
                 self.scheduler.add_job(self.stop_detection, trigger=s3_stop, id=f"s3_stop_{day}", replace_existing=True)
 
     def shutdown(self):
-        print("Shutdown scheduler and BroomDetector if not running...")
+        print("Shutdown scheduler and CarpalDetector if not running...")
         self.scheduler.shutdown(wait=False)
         self.stop_detection()

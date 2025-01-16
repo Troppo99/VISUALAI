@@ -32,7 +32,7 @@ camera_list = [
 
 processes = []
 for cam in camera_list:
-    p = subprocess.Popen(["C:\\xampp\\htdocs\\VISUALAI\\.venv\\Scripts\\python.exe", f"C:\\xampp\\htdocs\\VISUALAI\\website\\five_s\\src\\tests\\bd_run-{cam}.py"])
+    p = subprocess.Popen(["C:\\xampp\\htdocs\\VISUALAI\\.venv\\Scripts\\python.exe", f"C:\\xampp\\htdocs\\VISUALAI\\website-django\\five_s\\src\\bd\\run-{cam}.py"])
     processes.append(p)
 
 for p in processes:
