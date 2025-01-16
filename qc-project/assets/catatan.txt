@@ -1,3 +1,0 @@
-Projek ini digunakan untuk mendeteksi kesalahan pada kegiatan menjahit.
-Dalam menjahit, terdapat beberapa kesalahan yang dapat terjadi, seperti:
-1. 
