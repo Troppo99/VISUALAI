@@ -1,4 +1,5 @@
 import subprocess
+from pathlib import Path
 
 camera_list = [
     # "BUFFER1",
@@ -31,8 +32,27 @@ camera_list = [
 ]
 
 processes = []
+cwd = Path.cwd()
+script_dir = Path(__file__).resolve().parent
+
 for cam in camera_list:
-    p = subprocess.Popen(["C:\\xampp\\htdocs\\VISUALAI\\.venv\\Scripts\\python.exe", f"C:\\xampp\\htdocs\\VISUALAI\\website-django\\five_s\\src\\bd\\run-{cam}.py"])
+    python_executable = cwd / ".venv" / "Scripts" / "python.exe"
+    script_path = script_dir / f"run-{cam}.py"
+
+    if not python_executable.exists():
+        print(f"Python executable not found: {python_executable}")
+        continue
+
+    if not script_path.exists():
+        print(f"Script not found: {script_path}")
+        continue
+
+    p = subprocess.Popen(
+        [
+            str(python_executable),
+            str(script_path),
+        ],
+    )
     processes.append(p)
 
 for p in processes:

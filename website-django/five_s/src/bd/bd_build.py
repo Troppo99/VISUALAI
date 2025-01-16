@@ -1,3 +1,5 @@
+import os
+
 camera_list = [
     "BUFFER1",
     "CUTTING3",
@@ -47,5 +49,5 @@ except KeyboardInterrupt:
 """
 
 for camera in camera_list:
-    with open(f"website-django/five_s/src/bd/run-{camera}.py", "w") as f:
+    with open(rf"{os.path.dirname(os.path.abspath(__file__))}\run-{camera}.py", "w") as f:
         f.write(template.format(camera=camera))

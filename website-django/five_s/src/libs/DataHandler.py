@@ -31,7 +31,7 @@ class DataHandler:
             cvzone.putTextRect(frame, f"Datetime: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", (10, 30), scale=1, thickness=2, offset=5)
             cvzone.putTextRect(frame, f"Camera: {camera_name}", (10, 90), scale=1, thickness=2, offset=5)
             timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-            self.image_path = rf"\\10.5.0.3\website-django\media\{self.task[1]}\{camera_name}_{timestamp_str}.jpg"
+            self.image_path = rf"\\10.5.0.3\VISUALAI\website-django\media\{self.task[1]}\{camera_name}_{timestamp_str}.jpg"
             os.makedirs(os.path.dirname(self.image_path), exist_ok=True)
             cv2.imwrite(self.image_path, frame)
             if insert:
