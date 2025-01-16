@@ -134,16 +134,16 @@ class DefectDetector(ZoomIn):
         overlay = output_frame.copy()
         for box in boxes:
             x1, y1, x2, y2, class_id = box
-            y1 = y1-30
-            y2 = y2+30
-            x1 = x1-10
-            x2 = x2+10
+            y1 = y1 - 30
+            y2 = y2 + 30
+            x1 = x1 - 10
+            x2 = x2 + 10
 
             cvzone.cornerRect(overlay, (x1, y1, x2 - x1, y2 - y1), l=40, rt=0, t=5, colorC=(0, 0, 255))
             cvzone.putTextRect(overlay, f"{class_id}", (x1, y1), scale=3, thickness=3, offset=5)
 
         alpha = 0.5
-        output_frame = cv2.addWeighted(overlay, alpha, output_frame, 1-alpha, 0)
+        output_frame = cv2.addWeighted(overlay, alpha, output_frame, 1 - alpha, 0)
         return output_frame
 
     def main(self):
