@@ -1,16 +1,16 @@
 from ultralytics import YOLO
 
 if __name__ == "__main__":
-    model = YOLO(r"resources\models\yolo11l.pt")
+    model = YOLO(r"resources\models\defect12\weights\last.pt")
     model.train(
         data=r"resources\datasets\defect1\data.yaml",
         epochs=100,
         imgsz=1280,
         project=r"resources\models",
-        name="defect1",
+        name="defect12",
         device="cuda",
         batch=8,
-        resume=False,
+        resume=True,
         amp=True,
         # precision=16,
     )

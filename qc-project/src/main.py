@@ -3,6 +3,7 @@ import cv2
 import cvzone
 from ultralytics import YOLO
 import time
+import torch
 
 # Global variables for mouse callback
 drawing = False  # True jika mouse sedang ditekan
@@ -69,32 +70,36 @@ def mouse_callback(event, x, y, flags, param):
 
 
 def export_frame(frame, model):
-    frame = cv2.rotate(frame, cv2.ROTATE_180)
-    results = model(frame)
+    # Resize frame ke 1280x1280 sebelum inferensi
+    resized_frame = cv2.resize(frame, (1280, 1280))
+
+    with torch.no_grad():
+        results = model(resized_frame, stream=True, imgsz=(1280, 1280))  # Menggunakan tuple untuk ukuran
+    # results = model(frame)
     boxes_info = []
     for result in results:
         for box in result.boxes:
             x1, y1, x2, y2 = map(int, box.xyxy[0])
             conf = box.conf[0]
             class_id = model.names[int(box.cls[0])]
-            if conf > 0.5:
+            if conf > 0.5:  # Anda bisa menyesuaikan threshold ini
                 color = (0, 255, 0) if class_id == "O" else (0, 0, 255)
                 boxes_info.append((x1, y1, x2, y2, conf, class_id, color))
-    return frame, boxes_info
+    return resized_frame, boxes_info  # Kembalikan frame yang telah di-resize
 
 
 def main():
     global zoom_rect, is_zoomed
 
     videos = [
-        r"C:\xampp\htdocs\VISUALAI\website\static\videos\spreading_manual.mp4",
+        r"C:\xampp\htdocs\VISUALAI\qc-project\videos\labeling\defect\defect1.mp4",
         "rtsp://admin:oracle2015@172.16.0.162:554/Streaming/Channels/1",
         "videos/test/kon.mp4",
     ]
-    n = 1  # Pilih video ke-2 (indeks 1)
+    n = 0  # Pilih video ke-2 (indeks 1)
     cap = cv2.VideoCapture(videos[n])
 
-    model = YOLO(r"C:\xampp\htdocs\VISUALAI\website\static\resources\models\yolo11l.pt")
+    model = YOLO(r"C:\xampp\htdocs\VISUALAI\resources\models\defect12\weights\best.pt")
     model.overrides["verbose"] = False
 
     # Buat jendela bernama dan tetapkan callback mouse
