@@ -1,10 +1,10 @@
 camera_list = [
-    # "BUFFER1",
-    # "CUTTING3",
-    # "EKSPEDISI1",
-    # "FOLDING2",
-    # "FOLDING3",
-    # "FREEMETAL1",
+    "BUFFER1",
+    "CUTTING3",
+    "EKSPEDISI2",
+    "FOLDING2",
+    "FOLDING3",
+    "FREEMETAL1",
     "FREEMETAL2",
     "GUDANGACC1",
     "GUDANGACC2",
@@ -12,20 +12,20 @@ camera_list = [
     "GUDANGACC4",
     "INNERBOX1",
     "KANTIN1",
-    # "LINEMANUAL10",
-    # "LINEMANUAL14",
-    # "LINEMANUAL15",
-    # "METALDET1",
-    # "SEWING1",
-    # "SEWING2",
-    # "SEWING3",
-    # "SEWING4",
-    # "SEWING5",
-    # "SEWING6",
-    # "SEWING7",
-    # "SEWINGBACK1",
-    # "SEWINGBACK2",
-    # "SEWINGOFFICE",
+    "LINEMANUAL10",
+    "LINEMANUAL14",
+    "LINEMANUAL15",
+    "METALDET1",
+    "SEWING1",
+    "SEWING2",
+    "SEWING3",
+    "SEWING4",
+    "SEWING5",
+    "SEWING6",
+    "SEWING7",
+    "SEWINGBACK1",
+    "SEWINGBACK2",
+    "SEWINGOFFICE",
 ]
 
 template = """from bd_sch import Scheduling
@@ -47,5 +47,5 @@ except KeyboardInterrupt:
 """
 
 for camera in camera_list:
-    with open(f"tests/bd_run-{camera}.py", "w") as f:
+    with open(f"bd/run-{camera}.py", "w") as f:
         f.write(template.format(camera=camera))
