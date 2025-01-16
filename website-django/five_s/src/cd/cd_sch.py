@@ -41,8 +41,8 @@ class Scheduling:
             work_days = ["mon", "tue", "wed", "thu", "fri"]
             for day in work_days:
                 # S1 : 06:00 - 08:30
-                h1, m1, s1 = (13, 50, 0)
-                h2, m2, s2 = (13, 51, 10)
+                h1, m1, s1 = (15, 42, 0)
+                h2, m2, s2 = (15, 42, 10)
                 start_trigger = CronTrigger(day_of_week=day, hour=h1, minute=m1, second=s1)
                 self.scheduler.add_job(self.start_detection, trigger=start_trigger, id=f"start_{day}", replace_existing=True)
                 stop_trigger = CronTrigger(day_of_week=day, hour=h2, minute=m2, second=s2)
