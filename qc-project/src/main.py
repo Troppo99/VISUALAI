@@ -99,7 +99,7 @@ def main():
     n = 0  # Pilih video ke-2 (indeks 1)
     cap = cv2.VideoCapture(videos[n])
 
-    model = YOLO(r"C:\xampp\htdocs\VISUALAI\resources\models\defect12\weights\best.pt")
+    model = YOLO(r"C:\xampp\htdocs\VISUALAI\qc-project\models\defect1l.pt")
     model.overrides["verbose"] = False
 
     # Buat jendela bernama dan tetapkan callback mouse
