@@ -287,7 +287,7 @@ class CarpalDetector:
             print(f"[{self.camera_name}] => {state}")
 
             if "frame_resized" in locals():
-                DataHandler(task="-C").save_data(frame_resized, final_overlap, self.camera_name, insert=False)
+                DataHandler(task="-C").save_data(frame_resized, final_overlap, self.camera_name, insert=True)
             else:
                 print("No frame to save.")
 
