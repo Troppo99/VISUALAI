@@ -1,7 +1,4 @@
 .venv/*
-.vscode
-.vscode/*
-media/*
 *.pyc
 .draft.*
 desktop.ini
