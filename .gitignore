@@ -9,7 +9,7 @@ archives/static/data/*
 .draft.py
 *_all.py
 .draft.*
-*_run-*.py
+run-*.py
 **/datasets/*
 **/models/*
 yolo11n.pt
