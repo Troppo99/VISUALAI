@@ -10,7 +10,7 @@ from libs.DataHandler import DataHandler
 
 
 class BroCarpDetector:
-    def __init__(self, confidence_threshold=0.5, video_source=None, camera_name=None, window_size=(320, 240), stop_event=None):
+    def __init__(self, confidence_threshold=0.7, video_source=None, camera_name=None, window_size=(320, 240), stop_event=None):
         self.stop_event = stop_event
         if self.stop_event is None:
             self.stop_event = threading.Event()
@@ -111,7 +111,7 @@ class BroCarpDetector:
                 conf = bbox.conf[0]
                 class_id = self.model_broom.names[int(bbox.cls[0])]
                 if conf > self.confidence_threshold:
-                    boxes.append((x1, y1, x2, y2, class_id))
+                    boxes.append((x1, y1, x2, y2, class_id, conf))
         return boxes
 
     def export_frame_pose(self, frame):
@@ -157,7 +157,7 @@ class BroCarpDetector:
         # Deteksi Sapu
         boxes = self.export_frame_detect(frame_resized)
         for bbox in boxes:
-            x1, y1, x2, y2, class_id = bbox
+            x1, y1, x2, y2, class_id, conf = bbox
             overlap_results = self.check_overlap(x1, y1, x2, y2)
             if any(overlap_results):
                 detected = True
@@ -174,7 +174,7 @@ class BroCarpDetector:
                         self.draw_polygon_on_mask(new_area, self.trail_map_mask, color=(0, 255, 0))
 
                 cvzone.cornerRect(output_frame, (x1, y1, x2 - x1, y2 - y1), l=10, rt=0, t=2, colorC=(0, 255, 255))
-                cvzone.putTextRect(output_frame, f"{class_id} {overlap_results}", (x1, y1), scale=1, thickness=2, offset=5)
+                cvzone.putTextRect(output_frame, f"{class_id} {conf}", (x1, y1), scale=1, thickness=2, offset=5)
 
         # Deteksi Pergelangan Tangan
         keypoint_positions = self.export_frame_pose(frame_resized)
