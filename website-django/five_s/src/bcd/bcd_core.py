@@ -107,60 +107,21 @@ class BroCarpDetector:
     def export_frame_pose(self):
         pass
 
+    def draw_rois(self, frame):
+        if not self.rois:
+            return
+        for roi in self.rois:
+            if roi.geom_type != "Polygon":
+                continue
+            pts = np.array(roi.exterior.coords, np.int32)
+            pts = pts.reshape((-1, 1, 2))
+            cv2.polylines(frame, [pts], True, (0, 255, 0), 2)
+
     def process_frame(self, frame):
         frame_resized = cv2.resize(frame, self.process_size)
-        # self.draw_rois(frame_resized)
-        # boxes = self.export_frame(frame_resized)
+        self.draw_rois(frame_resized)
         output_frame = frame_resized.copy()
-        # detected = False
-        # for box in boxes:
-        #     x1, y1, x2, y2, class_id = box
-        #     overlap_results = self.check_overlap(x1, y1, x2, y2)
-        #     if any(overlap_results):
-        #         detected = True
-        #         obj_box_polygon = Polygon([(x1, y1), (x2, y1), (x2, y2), (x1, y2)])
-        #         if self.union_roi is not None:
-        #             current_area = obj_box_polygon.intersection(self.union_roi)
-        #         else:
-        #             current_area = obj_box_polygon
-
-        #         if not current_area.is_empty:
-        #             new_area = current_area.difference(self.trail_map_polygon)
-
-        #             if not new_area.is_empty:
-        #                 self.trail_map_polygon = self.trail_map_polygon.union(new_area)
-        #                 self.draw_polygon_on_mask(new_area, self.trail_map_mask, color=(0, 255, 0))
-
-        #         cvzone.cornerRect(output_frame, (x1, y1, x2 - x1, y2 - y1), l=10, rt=0, t=2, colorC=(0, 255, 255))
-        #         cvzone.putTextRect(output_frame, f"{class_id} {overlap_results}", (x1, y1), scale=1, thickness=2, offset=5)
-
         overlap_percentage = 0
-        # if self.union_roi and not self.union_roi.is_empty:
-        #     overlap_percentage = (self.trail_map_polygon.area / self.union_roi.area) * 100
-
-        # current_time = time.time()
-        # if detected:
-        #     self.last_detection_time = current_time
-        #     if overlap_percentage >= 50 and self.trail_map_start_time is None:
-        #         self.trail_map_start_time = current_time
-        # else:
-        #     if self.last_detection_time is None:
-        #         time_since_last_det = current_time - self.start_run_time
-        #     else:
-        #         time_since_last_det = current_time - self.last_detection_time
-
-        #     if overlap_percentage < 10 and time_since_last_det > 10:
-        #         self.reset_trail_map()
-        #     elif overlap_percentage < 50 and time_since_last_det > 60:
-        #         self.reset_trail_map()
-
-        # if overlap_percentage >= 50 and self.trail_map_start_time is not None:
-        #     if current_time - self.trail_map_start_time > 60 and not self.capture_done:
-        #         print("capture, save, and send")
-        #         self.capture_done = True
-
-        # alpha = 0.5
-        # output_frame = cv2.addWeighted(output_frame, 1.0, self.trail_map_mask, alpha, 0)
         cvzone.putTextRect(output_frame, f"Percentage: {overlap_percentage:.2f}%", (10, 60), scale=1, thickness=2, offset=5)
         return output_frame, overlap_percentage
 
