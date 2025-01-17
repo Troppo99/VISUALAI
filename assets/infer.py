@@ -6,6 +6,7 @@ import time
 
 
 def export_frame(frame):
+    frame = cv2.rotate(frame, cv2.ROTATE_180)
     results = model(frame)
     boxes_info = []
     for result in results:
@@ -20,13 +21,13 @@ def export_frame(frame):
 
 
 videos = [
-    r"C:\xampp\htdocs\VISUALAI\website\static\videos\spreading_manual.mp4",
-    "rtsp://admin:oracle2015@172.16.0.43:554/Streaming/Channels/1",
+    r"C:\xampp\htdocs\VISUALAI\website-django\static\videos\spreading_manual.mp4",
+    "rtsp://admin:oracle2015@172.16.0.162:554/Streaming/Channels/1",
     "videos/test/kon.mp4",
 ]
-n = 0
+n = 1
 cap = cv2.VideoCapture(videos[n])
-model = YOLO(r"C:\xampp\htdocs\VISUALAI\website\static\resources\models\blazing\weights\best.pt")
+model = YOLO(r"C:\xampp\htdocs\VISUALAI\website-django\static\resources\models\yolo11l.pt")
 model.overrides["verbose"] = False
 
 while True:
@@ -44,7 +45,7 @@ while True:
         cvzone.cornerRect(frame_results, (x1, y1, x2 - x1, y2 - y1), rt=0, colorC=(0, 255, 255))
         cvzone.putTextRect(frame_results, f"This is {class_id}", (x1, y1 - 15), colorR=color)
 
-    frame_show = cv2.resize(frame_results, (540, 360))
+    frame_show = cv2.resize(frame_results, (1280, 720))
     cv2.imshow(f"Infer {videos[n]}", frame_show)
     key = cv2.waitKey(1) & 0xFF
     if key == ord("n"):
