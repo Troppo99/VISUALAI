@@ -101,17 +101,151 @@ class BroCarpDetector:
                     pass
             cap.release()
 
-    def export_frame(self):
+    def export_frame_detect(self):
         pass
 
-    def process_frame(self):
+    def export_frame_pose(self):
         pass
+
+    def process_frame(self, frame):
+        frame_resized = cv2.resize(frame, self.process_size)
+        # self.draw_rois(frame_resized)
+        # boxes = self.export_frame(frame_resized)
+        output_frame = frame_resized.copy()
+        # detected = False
+        # for box in boxes:
+        #     x1, y1, x2, y2, class_id = box
+        #     overlap_results = self.check_overlap(x1, y1, x2, y2)
+        #     if any(overlap_results):
+        #         detected = True
+        #         obj_box_polygon = Polygon([(x1, y1), (x2, y1), (x2, y2), (x1, y2)])
+        #         if self.union_roi is not None:
+        #             current_area = obj_box_polygon.intersection(self.union_roi)
+        #         else:
+        #             current_area = obj_box_polygon
+
+        #         if not current_area.is_empty:
+        #             new_area = current_area.difference(self.trail_map_polygon)
+
+        #             if not new_area.is_empty:
+        #                 self.trail_map_polygon = self.trail_map_polygon.union(new_area)
+        #                 self.draw_polygon_on_mask(new_area, self.trail_map_mask, color=(0, 255, 0))
+
+        #         cvzone.cornerRect(output_frame, (x1, y1, x2 - x1, y2 - y1), l=10, rt=0, t=2, colorC=(0, 255, 255))
+        #         cvzone.putTextRect(output_frame, f"{class_id} {overlap_results}", (x1, y1), scale=1, thickness=2, offset=5)
+
+        overlap_percentage = 0
+        # if self.union_roi and not self.union_roi.is_empty:
+        #     overlap_percentage = (self.trail_map_polygon.area / self.union_roi.area) * 100
+
+        # current_time = time.time()
+        # if detected:
+        #     self.last_detection_time = current_time
+        #     if overlap_percentage >= 50 and self.trail_map_start_time is None:
+        #         self.trail_map_start_time = current_time
+        # else:
+        #     if self.last_detection_time is None:
+        #         time_since_last_det = current_time - self.start_run_time
+        #     else:
+        #         time_since_last_det = current_time - self.last_detection_time
+
+        #     if overlap_percentage < 10 and time_since_last_det > 10:
+        #         self.reset_trail_map()
+        #     elif overlap_percentage < 50 and time_since_last_det > 60:
+        #         self.reset_trail_map()
+
+        # if overlap_percentage >= 50 and self.trail_map_start_time is not None:
+        #     if current_time - self.trail_map_start_time > 60 and not self.capture_done:
+        #         print("capture, save, and send")
+        #         self.capture_done = True
+
+        # alpha = 0.5
+        # output_frame = cv2.addWeighted(output_frame, 1.0, self.trail_map_mask, alpha, 0)
+        cvzone.putTextRect(output_frame, f"Percentage: {overlap_percentage:.2f}%", (10, 60), scale=1, thickness=2, offset=5)
+        return output_frame, overlap_percentage
 
     def main(self):
-        print("anda masuk main")
-        pass
+        state = ""
+        skip_frames = 2
+        frame_count = 0
+        window_name = f"BCD: {self.camera_name}"
+        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(window_name, self.window_size)
+        final_overlap = 0
+
+        try:
+            if self.video_fps is None:
+                self.frame_queue = queue.Queue(maxsize=10)
+                self.frame_thread = threading.Thread(target=self.capture_frame, daemon=True)
+                self.frame_thread.start()
+
+                while not self.stop_event.is_set():
+                    try:
+                        frame = self.frame_queue.get(timeout=1)
+                    except queue.Empty:
+                        continue
+                    frame_count += 1
+                    if frame_count % skip_frames != 0:
+                        continue
+                    current_time = time.time()
+                    time_diff = current_time - self.prev_frame_time
+                    self.fps = 1 / time_diff if time_diff > 0 else 0
+                    self.prev_frame_time = current_time
+                    frame_resized, final_overlap = self.process_frame(frame)
+                    cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
+                    cv2.imshow(window_name, frame_resized)
+                    key = cv2.waitKey(1) & 0xFF
+                    if key == ord("n") or key == ord("N"):
+                        print("Manual stop detected.")
+                        self.stop_event.set()
+                        break
+
+                cv2.destroyAllWindows()
+                if self.frame_thread.is_alive():
+                    self.frame_thread.join()
+            else:
+                cap = cv2.VideoCapture(self.video_source)
+                frame_delay = int(1000 / self.video_fps)
+                while cap.isOpened() and not self.stop_event.is_set():
+                    start_time = time.time()
+                    ret, frame = cap.read()
+                    if not ret:
+                        print("Video ended.")
+                        break
+                    frame_count += 1
+                    if frame_count % skip_frames != 0:
+                        continue
+                    current_time = time.time()
+                    time_diff = current_time - self.prev_frame_time
+                    self.fps = 1 / time_diff if time_diff > 0 else 0
+                    self.prev_frame_time = current_time
+                    frame_resized, final_overlap = self.process_frame(frame)
+                    cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
+                    cv2.imshow(window_name, frame_resized)
+                    processing_time = (time.time() - start_time) * 1000
+                    adjusted_delay = max(int(frame_delay - processing_time), 1)
+                    key = cv2.waitKey(adjusted_delay) & 0xFF
+                    if key == ord("n") or key == ord("N"):
+                        print("Manual stop detected.")
+                        self.stop_event.set()
+                        break
+                cap.release()
+                cv2.destroyAllWindows()
+        finally:
+            if final_overlap >= 50:
+                state = "Membersihkan debu sawang langit/kap lampu selesai"
+            elif final_overlap >= 30:
+                state = "Membersihkan debu sawang langit/kap lampu tidak selesai"
+            else:
+                state = "Tidak Membersihkan debu sawang langit/kap lampu"
+            print(f"[{self.camera_name}] => {state}")
+
+            if "frame_resized" in locals():
+                DataHandler(task="-BC").save_data(frame_resized, final_overlap, self.camera_name, insert=False)
+            else:
+                print("No frame to save.")
 
 
 if __name__ == "__main__":
-    bcd = BroCarpDetector()
+    bcd = BroCarpDetector(camera_name="ROBOTIC")
     bcd.main()
