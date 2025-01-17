@@ -101,11 +101,42 @@ class BroCarpDetector:
                     pass
             cap.release()
 
-    def export_frame_detect(self):
-        pass
+    def export_frame_detect(self, frame):
+        with torch.no_grad():
+            results = self.model(frame, stream=True, imgsz=self.process_size[0])
+        boxes = []
+        for result in results:
+            for bbox in result.boxes:
+                x1, y1, x2, y2 = map(int, bbox.xyxy[0])
+                conf = bbox.conf[0]
+                class_id = self.model.names[int(bbox.cls[0])]
+                if conf > self.confidence_threshold:
+                    boxes.append((x1, y1, x2, y2, class_id))
+        return boxes
 
-    def export_frame_pose(self):
-        pass
+    def export_frame_pose(self, frame):
+        with torch.no_grad():
+            results = self.model(frame, stream=True, imgsz=self.process_size[0], task="pose")
+
+        keypoint_positions = []
+        for result in results:
+            if result.keypoints is None:
+                continue
+            if not hasattr(result.keypoints, "conf") or result.keypoints.conf is None:
+                continue
+
+            kp_tensor = result.keypoints.xy.cpu().numpy()
+            kp_conf = result.keypoints.conf.cpu().numpy()
+            for kp_arr, kp_c in zip(kp_tensor, kp_conf):
+                single_person_kps = []
+                for (x, y), c in zip(kp_arr, kp_c):
+                    if c >= self.confidence_threshold:
+                        single_person_kps.append((int(x), int(y)))
+                    else:
+                        single_person_kps.append(None)
+                keypoint_positions.append(single_person_kps)
+
+        return keypoint_positions
 
     def draw_rois(self, frame):
         if not self.rois:
