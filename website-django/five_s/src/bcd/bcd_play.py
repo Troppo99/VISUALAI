@@ -1,11 +1,60 @@
-import subprocess
+import subprocess, os, socket
 from pathlib import Path
-import os
 
-camera_list = [
-    "ROBOTIC",
+all_camera = [
+    "HALAMANDEPAN1",
+    "EKSPEDISI1",
+    "GUDANGACC1",
+    "GUDANGACC2",
+    "FOLDING1",
+    "FOLDING2",
+    "FOLDING3",
+    "METALDET1",
+    "FREEMETAL1",
+    "FREEMETAL2",
+    "CUTTING3",
+    "CUTTING2",
 ]
 
+pcs = ["PC-100", "PC-101", "PC-102", "TroppoLungo"]
+
+
+def distribute_cameras(all_cameras, pcs, special_pc="PC-8"):
+    total_cameras = len(all_cameras)
+    total_pcs = len(pcs)
+
+    base = total_cameras // total_pcs
+    remainder = total_cameras % total_pcs
+
+    camera_distribution = {pc: base for pc in pcs}
+
+    non_special_pcs = [pc for pc in pcs if pc != special_pc]
+
+    for i in range(remainder):
+        pc = non_special_pcs[i % len(non_special_pcs)]
+        camera_distribution[pc] += 1
+
+    return camera_distribution
+
+
+camera_distribution = distribute_cameras(all_camera, pcs, special_pc="PC-8")
+
+nama_pc = socket.gethostname()
+
+if nama_pc in camera_distribution:
+    start_idx = 0
+    assigned_cameras = {}
+    for pc in pcs:
+        count = camera_distribution[pc]
+        assigned_cameras[pc] = all_camera[start_idx : start_idx + count]
+        start_idx += count
+    camera_list = assigned_cameras.get(nama_pc, [])
+    print(f"PC '{nama_pc}' menerima kamera: {camera_list}")
+else:
+    print(f"PC '{nama_pc}' tidak dikenali. Tidak ada kamera yang dialokasikan.")
+    camera_list = []
+
+# Sisa kode Anda
 processes = []
 cwd = Path.cwd()
 script_dir = Path(__file__).resolve().parent
@@ -19,6 +68,7 @@ detector_args = {{
     "window_size": (320, 240)
 }}
 scheduler = Scheduling(detector_args, "OFFICE")
+print("Running on PC:", "{pc_name}")
 try:
     while True:
         time.sleep(1)
@@ -26,6 +76,7 @@ except KeyboardInterrupt:
     print("Program terminated by user.")
     scheduler.shutdown()
 """
+pc_name = socket.gethostname()
 
 for cam in camera_list:
     python_executable = cwd / ".venv" / "Scripts" / "python.exe"
@@ -39,7 +90,7 @@ for cam in camera_list:
         print(f"Script not found: {script_path}. Membuat file baru...")
         try:
             with open(script_path, "w", encoding="utf-8") as f:
-                f.write(template.format(camera=cam))
+                f.write(template.format(camera=cam, pc_name=pc_name))
             print(f"File {script_path} berhasil dibuat.")
         except Exception as e:
             print(f"Gagal membuat file {script_path}: {e}")
