@@ -2,7 +2,9 @@ import subprocess
 from pathlib import Path
 import os
 
-camera_list = ["ROBOTIC"]
+camera_list = [
+    "ROBOTIC",
+]
 
 processes = []
 cwd = Path.cwd()
