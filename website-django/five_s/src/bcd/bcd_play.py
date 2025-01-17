@@ -16,7 +16,7 @@ all_camera = [
     "CUTTING2",
 ]
 
-pcs = ["PC-100", "PC-101", "PC-102", "TroppoLungo"]
+pcs = ["PC-100", "PC-101", "PC-102", "PC-8"]
 
 
 def distribute_cameras(all_cameras, pcs, special_pc="PC-8"):
