@@ -39,7 +39,6 @@ class CarpalDetector:
         self.trail_map_start_time = None
         self.start_run_time = time.time()
         self.capture_done = False
-        self.final_overlap = 0
         self.pairs_human = [(0, 1), (0, 2), (1, 2), (2, 4), (1, 3), (4, 6), (3, 5), (5, 6), (6, 8), (8, 10), (5, 7), (7, 9), (6, 12), (12, 11), (11, 5), (12, 14), (14, 16), (11, 13), (13, 15)]
 
     def camera_config(self):
