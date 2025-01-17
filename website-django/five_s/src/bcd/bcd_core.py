@@ -103,20 +103,20 @@ class BroCarpDetector:
 
     def export_frame_detect(self, frame):
         with torch.no_grad():
-            results = self.model(frame, stream=True, imgsz=self.process_size[0])
+            results = self.model_broom(frame, stream=True, imgsz=self.process_size[0])
         boxes = []
         for result in results:
             for bbox in result.boxes:
                 x1, y1, x2, y2 = map(int, bbox.xyxy[0])
                 conf = bbox.conf[0]
-                class_id = self.model.names[int(bbox.cls[0])]
+                class_id = self.model_broom.names[int(bbox.cls[0])]
                 if conf > self.confidence_threshold:
                     boxes.append((x1, y1, x2, y2, class_id))
         return boxes
 
     def export_frame_pose(self, frame):
         with torch.no_grad():
-            results = self.model(frame, stream=True, imgsz=self.process_size[0], task="pose")
+            results = self.model_carpal(frame, stream=True, imgsz=self.process_size[0], task="pose")
 
         keypoint_positions = []
         for result in results:
@@ -152,9 +152,124 @@ class BroCarpDetector:
         frame_resized = cv2.resize(frame, self.process_size)
         self.draw_rois(frame_resized)
         output_frame = frame_resized.copy()
+        detected = False
+
+        # Deteksi Sapu
+        boxes = self.export_frame_detect(frame_resized)
+        for bbox in boxes:
+            x1, y1, x2, y2, class_id = bbox
+            overlap_results = self.check_overlap(x1, y1, x2, y2)
+            if any(overlap_results):
+                detected = True
+                obj_box_polygon = Polygon([(x1, y1), (x2, y1), (x2, y2), (x1, y2)])
+                if self.union_roi is not None:
+                    current_area = obj_box_polygon.intersection(self.union_roi)
+                else:
+                    current_area = obj_box_polygon
+
+                if not current_area.is_empty:
+                    new_area = current_area.difference(self.trail_map_polygon)
+                    if not new_area.is_empty:
+                        self.trail_map_polygon = self.trail_map_polygon.union(new_area)
+                        self.draw_polygon_on_mask(new_area, self.trail_map_mask, color=(0, 255, 0))
+
+                cvzone.cornerRect(output_frame, (x1, y1, x2 - x1, y2 - y1), l=10, rt=0, t=2, colorC=(0, 255, 255))
+                cvzone.putTextRect(output_frame, f"{class_id} {overlap_results}", (x1, y1), scale=1, thickness=2, offset=5)
+
+        # Deteksi Pergelangan Tangan
+        keypoint_positions = self.export_frame_pose(frame_resized)
+        # print(f"Processing keypoints: {keypoint_positions}")  # Debugging
+        for kp_list in keypoint_positions:
+            for idx in [9, 10]:  # Indeks titik kunci pergelangan tangan
+                if idx < len(kp_list) and kp_list[idx] is not None:
+                    (x, y) = kp_list[idx]
+                    # print(f"Detected wrist at ({x}, {y})")  # Debugging
+                    kp_polygon = box(x - 10, y - 10, x + 10, y + 10)
+                    if self.union_roi is not None:
+                        current_area = kp_polygon.intersection(self.union_roi)
+                    else:
+                        current_area = kp_polygon
+
+                    if not current_area.is_empty:
+                        new_area = current_area.difference(self.trail_map_polygon)
+                        if not new_area.is_empty:
+                            self.trail_map_polygon = self.trail_map_polygon.union(new_area)
+                            self.draw_polygon_on_mask(new_area, self.trail_map_mask, color=(0, 0, 255))  # Warna merah untuk pose
+
+                    detected = True
+                    # Gambar titik kunci pada frame
+                    cv2.circle(output_frame, (x, y), 5, (0, 0, 255), -1)
+
         overlap_percentage = 0
+        if self.union_roi and not self.union_roi.is_empty:
+            overlap_percentage = (self.trail_map_polygon.area / self.union_roi.area) * 100
+
+        current_time = time.time()
+        if detected:
+            self.last_detection_time = current_time
+            if overlap_percentage >= 50 and self.trail_map_start_time is None:
+                self.trail_map_start_time = current_time
+        else:
+            if self.last_detection_time is None:
+                time_since_last_det = current_time - self.start_run_time
+            else:
+                time_since_last_det = current_time - self.last_detection_time
+
+            if overlap_percentage < 10 and time_since_last_det > 10:
+                self.reset_trail_map()
+            elif overlap_percentage < 50 and time_since_last_det > 60:
+                self.reset_trail_map()
+
+        if overlap_percentage >= 50 and self.trail_map_start_time is not None:
+            if (current_time - self.trail_map_start_time) > 60 and not self.capture_done:
+                self.capture_done = True
+
+        alpha = 0.5
+        output_frame = cv2.addWeighted(output_frame, 1.0, self.trail_map_mask, alpha, 0)
         cvzone.putTextRect(output_frame, f"Percentage: {overlap_percentage:.2f}%", (10, 60), scale=1, thickness=2, offset=5)
         return output_frame, overlap_percentage
+
+    def reset_trail_map(self):
+        self.trail_map_polygon = Polygon()
+        self.trail_map_mask = np.zeros((self.process_size[1], self.process_size[0], 3), dtype=np.uint8)
+        self.trail_map_start_time = None
+        self.capture_done = False
+
+    def draw_polygon_on_mask(self, polygon, mask, color=(0, 255, 0)):
+        if polygon.is_empty:
+            return
+        if polygon.geom_type == "Polygon":
+            polygons = [polygon]
+        elif polygon.geom_type == "MultiPolygon":
+            polygons = polygon.geoms
+        elif polygon.geom_type == "GeometryCollection":
+            polygons = []
+            for geom in polygon.geoms:
+                if geom.geom_type in ["Polygon", "MultiPolygon"]:
+                    if geom.geom_type == "Polygon":
+                        polygons.append(geom)
+                    elif geom.geom_type == "MultiPolygon":
+                        polygons.extend(geom.geoms)
+        else:
+            return
+
+        for poly in polygons:
+            if poly.is_empty:
+                continue
+            pts = np.array(poly.exterior.coords, np.int32)
+            pts = pts.reshape((-1, 1, 2))
+            cv2.fillPoly(mask, [pts], color)
+
+    def check_overlap(self, x1, y1, x2, y2):
+        main_box = Polygon([(x1, y1), (x2, y1), (x2, y2), (x1, y2)])
+        overlap_results = []
+        for roi in self.rois:
+            other_polygon = Polygon(roi)
+            intersection_area = main_box.intersection(other_polygon).area
+            union_area = main_box.union(other_polygon).area
+            iou = intersection_area / union_area if union_area != 0 else 0
+            overlap_results.append(iou > 0)
+        return overlap_results
 
     def main(self):
         state = ""
