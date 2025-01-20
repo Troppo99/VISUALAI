@@ -82,8 +82,13 @@ cwd = Path.cwd()
 script_dir = Path(__file__).resolve().parent
 
 template = """
-from bd_sch import Scheduling
-import time
+import time, os, sys
+
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.join(current_dir, "..")
+sys.path.append(parent_dir)
+from libs.Scheduler import Scheduler
 
 
 detector_args = {{
@@ -91,7 +96,7 @@ detector_args = {{
     "window_size": (320, 240),
     "is_insert": False,
 }}
-scheduler = Scheduling(detector_args, "ODOS")
+scheduler = Scheduler(detector_args, "ODOS")
 try:
     while True:
         time.sleep(1)
