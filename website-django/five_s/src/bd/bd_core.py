@@ -11,13 +11,9 @@ from libs.DataHandler import DataHandler
 
 class BroomDetector:
     def __init__(self, confidence_threshold=0.5, video_source=None, camera_name=None, window_size=(320, 240), stop_event=None):
-        self.stop_event = stop_event  # <-- Event dari luar
-        # Kalau belum ada, fallback ke threading.Event() supaya tidak error
+        self.stop_event = stop_event
         if self.stop_event is None:
-            import threading
-
             self.stop_event = threading.Event()
-
         self.confidence_threshold = confidence_threshold
         self.video_source = video_source
         self.camera_name = camera_name
@@ -112,7 +108,7 @@ class BroomDetector:
                     pass
             cap.release()
 
-    def export_frame(self, frame):
+    def export_frame_detect(self, frame):
         with torch.no_grad():
             results = self.model(frame, stream=True, imgsz=self.process_size[0])
         boxes = []
@@ -191,7 +187,6 @@ class BroomDetector:
     def draw_polygon_on_mask(self, polygon, mask, color=(0, 255, 0)):
         if polygon.is_empty:
             return
-
         if polygon.geom_type == "Polygon":
             polygons = [polygon]
         elif polygon.geom_type == "MultiPolygon":
@@ -237,8 +232,7 @@ class BroomDetector:
         try:
             if self.video_fps is None:
                 self.frame_queue = queue.Queue(maxsize=10)
-                self.frame_thread = threading.Thread(target=self.capture_frame)
-                self.frame_thread.daemon = True
+                self.frame_thread = threading.Thread(target=self.capture_frame, daemon=True)
                 self.frame_thread.start()
 
                 while not self.stop_event.is_set():
@@ -302,7 +296,6 @@ class BroomDetector:
                 state = "Tidak menyapu"
             print(f"{self.camera_name} => {state}")
 
-            # Contoh kirim data
             if "frame_resized" in locals():
                 DataHandler(task="-B").save_data(frame_resized, final_overlap, self.camera_name, insert=True)
             else:
