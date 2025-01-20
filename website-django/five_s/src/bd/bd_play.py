@@ -81,8 +81,7 @@ processes = []
 cwd = Path.cwd()
 script_dir = Path(__file__).resolve().parent
 
-template = """
-import time, os, sys
+template = """import time, os, sys
 
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -96,7 +95,7 @@ detector_args = {{
     "window_size": (320, 240),
     "is_insert": False,
 }}
-scheduler = Scheduler(detector_args, "ODOS")
+scheduler = Scheduler(detector_args, "ODMS")
 try:
     while True:
         time.sleep(1)
