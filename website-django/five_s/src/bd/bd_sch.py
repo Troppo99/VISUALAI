@@ -2,7 +2,7 @@ import threading
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from pytz import timezone
-from bd_test import BroomDetector
+from bd_core import BroomDetector
 
 
 class Scheduling:
@@ -37,7 +37,7 @@ class Scheduling:
             print("BroomDetector is not running.")
 
     def setup_schedule(self):
-        if self.schedule_type == "OFFICE":
+        if self.schedule_type == "ODOS":
             work_days = ["mon", "tue", "wed", "thu", "fri"]
             for day in work_days:
                 # S1 : 06:00 - 08:30
@@ -47,7 +47,7 @@ class Scheduling:
                 self.scheduler.add_job(self.start_detection, trigger=start_trigger, id=f"start_{day}", replace_existing=True)
                 stop_trigger = CronTrigger(day_of_week=day, hour=h2, minute=m2, second=s2)
                 self.scheduler.add_job(self.stop_detection, trigger=stop_trigger, id=f"stop_{day}", replace_existing=True)
-        elif self.schedule_type == "SEWING":
+        elif self.schedule_type == "ODMS":
             work_days = ["mon", "tue", "wed", "thu", "fri"]
             for day in work_days:
                 # S1 : 07:30 - 09:45

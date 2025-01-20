@@ -2,21 +2,43 @@ import subprocess, socket
 from pathlib import Path
 
 all_camera = [
-    "HALAMANDEPAN1",
-    "EKSPEDISI1",
-    "GUDANGACC1",
-    "GUDANGACC2",
-    "FOLDING1",
+    "BUFFER1",
+    "CUTTING3",
+    "EKSPEDISI2",
     "FOLDING2",
     "FOLDING3",
-    "METALDET1",
     "FREEMETAL1",
     "FREEMETAL2",
-    "CUTTING3",
-    "CUTTING2",
+    "GUDANGACC1",
+    "GUDANGACC2",
+    "GUDANGACC3",
+    "GUDANGACC4",
+    "INNERBOX1",
+    "KANTIN1",
+    "LINEMANUAL10",
+    "LINEMANUAL14",
+    "LINEMANUAL15",
+    "METALDET1",
+    "SEWING1",
+    "SEWING2",
+    "SEWING3",
+    "SEWING4",
+    "SEWING5",
+    "SEWING6",
+    "SEWING7",
+    "SEWINGBACK1",
+    "SEWINGBACK2",
+    "SEWINGOFFICE",
 ]
 
-pcs = ["PC-100", "PC-101", "PC-102", "PC-8"]
+
+pcs = [
+    "PC-100",
+    "PC-101",
+    "PC-102",
+    "PC-8",
+    "TroppoLungo",
+]
 
 
 def distribute_cameras(all_cameras, pcs, special_pc="PC-8"):
@@ -54,21 +76,22 @@ else:
     print(f"PC '{nama_pc}' tidak dikenali. Tidak ada kamera yang dialokasikan.")
     camera_list = []
 
+
 processes = []
 cwd = Path.cwd()
 script_dir = Path(__file__).resolve().parent
 
 template = """
-from bcd_sch import Scheduling
+from bd_sch import Scheduling
 import time
 
 
 detector_args = {{
     "camera_name": "{camera}",
-    "window_size": (320, 240)
+    "window_size": (320, 240),
+    "is_insert": False,
 }}
 scheduler = Scheduling(detector_args, "ODOS")
-print("Running on PC:", "{pc_name}")
 try:
     while True:
         time.sleep(1)
@@ -76,6 +99,7 @@ except KeyboardInterrupt:
     print("Program terminated by user.")
     scheduler.shutdown()
 """
+
 pc_name = socket.gethostname()
 
 for cam in camera_list:

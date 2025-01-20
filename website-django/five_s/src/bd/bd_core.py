@@ -10,7 +10,7 @@ from libs.DataHandler import DataHandler
 
 
 class BroomDetector:
-    def __init__(self, confidence_threshold=0.5, video_source=None, camera_name=None, window_size=(320, 240), stop_event=None):
+    def __init__(self, confidence_threshold=0.5, video_source=None, camera_name=None, window_size=(320, 240), stop_event=None, is_insert=True):
         self.stop_event = stop_event
         if self.stop_event is None:
             self.stop_event = threading.Event()
@@ -39,6 +39,7 @@ class BroomDetector:
         self.trail_map_start_time = None
         self.start_run_time = time.time()
         self.capture_done = False
+        self.is_insert = is_insert
 
     def camera_config(self):
         with open(r"\\10.5.0.3\VISUALAI\website-django\static\resources\conf\camera_config.json", "r") as f:
@@ -124,7 +125,7 @@ class BroomDetector:
     def process_frame(self, frame):
         frame_resized = cv2.resize(frame, self.process_size)
         self.draw_rois(frame_resized)
-        boxes = self.export_frame(frame_resized)
+        boxes = self.export_frame_detect(frame_resized)
         output_frame = frame_resized.copy()
         detected = False
         for box in boxes:
@@ -297,7 +298,7 @@ class BroomDetector:
             print(f"{self.camera_name} => {state}")
 
             if "frame_resized" in locals():
-                DataHandler(task="-B").save_data(frame_resized, final_overlap, self.camera_name, insert=True)
+                DataHandler(task="-B").save_data(frame_resized, final_overlap, self.camera_name, insert=self.is_insert)
             else:
                 print("No frame to save.")
 
