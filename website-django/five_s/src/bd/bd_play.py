@@ -95,7 +95,7 @@ detector_args = {{
     "window_size": (320, 240),
     "is_insert": False,
 }}
-scheduler = Scheduler(detector_args, "ODMS")
+scheduler = Scheduler(detector_args, "bd_sewing")
 try:
     while True:
         time.sleep(1)

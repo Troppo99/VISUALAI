@@ -41,7 +41,7 @@ class Scheduler:
             print("BroomDetector is not running.")
 
     def setup_schedule(self):
-        if self.schedule_type == "ODOS":
+        if self.schedule_type == "bd_office":
             work_days = ["mon", "tue", "wed", "thu", "fri"]
             for day in work_days:
                 # S1 : 06:00 - 08:30
@@ -51,7 +51,7 @@ class Scheduler:
                 self.scheduler.add_job(self.start_detection, trigger=start_trigger, id=f"start_{day}", replace_existing=True)
                 stop_trigger = CronTrigger(day_of_week=day, hour=h2, minute=m2, second=s2)
                 self.scheduler.add_job(self.stop_detection, trigger=stop_trigger, id=f"stop_{day}", replace_existing=True)
-        elif self.schedule_type == "ODMS":
+        elif self.schedule_type == "bd_sewing":
             work_days = ["mon", "tue", "wed", "thu", "fri"]
             for day in work_days:
                 # S1 : 07:30 - 09:45
@@ -78,6 +78,18 @@ class Scheduler:
 
                 self.scheduler.add_job(self.start_detection, trigger=s3_start, id=f"s3_start_{day}", replace_existing=True)
                 self.scheduler.add_job(self.stop_detection, trigger=s3_stop, id=f"s3_stop_{day}", replace_existing=True)
+        elif self.schedule_type == "cd":
+            pass
+        elif self.schedule_type == "bcd":
+            pass
+        elif self.schedule_type == "ctd":
+            pass
+        elif self.schedule_type == "dd":
+            pass
+        elif self.schedule_type == "bcd":
+            pass
+        elif self.schedule_type == "bcd":
+            pass
 
     def shutdown(self):
         print("Shutdown scheduler and BroomDetector if not running...")
