@@ -15,7 +15,7 @@ pcs = [
     "PC-101",
     "PC-102",
     "PC-8",
-    "TroppoLungo",
+    # "TroppoLungo",
 ]
 
 
