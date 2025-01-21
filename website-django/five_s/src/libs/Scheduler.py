@@ -48,71 +48,35 @@ class Scheduler:
 
     def setup_schedule(self):
         with self.lock:
+            work_days = ["mon", "tue", "wed", "thu", "fri"]
+            time_ranges = []
+
             if self.schedule_type == "bd_office":
-                work_days = ["mon", "tue", "wed", "thu", "fri"]
-                for day in work_days:
-                    # S1 : 06:00 - 08:30
-                    h1, m1, s1 = (9, 57, 0)
-                    h2, m2, s2 = (9, 57, 10)
-                    start_trigger = CronTrigger(day_of_week=day, hour=h1, minute=m1, second=s1)
-                    self.scheduler.add_job(self.start_detection, trigger=start_trigger, id=f"start_{day}", replace_existing=True)
-                    stop_trigger = CronTrigger(day_of_week=day, hour=h2, minute=m2, second=s2)
-                    self.scheduler.add_job(self.stop_detection, trigger=stop_trigger, id=f"stop_{day}", replace_existing=True)
+                time_ranges = [((9, 57, 0), (9, 57, 10))]  # satu rentang
+
             elif self.schedule_type == "bd_sewing":
-                work_days = ["mon", "tue", "wed", "thu", "fri"]
-                for day in work_days:
-                    # S1 : 07:30 - 09:45
-                    # S2 : 09:45 - 12:50
-                    # S3 : 12:50 - 13:05
-                    h1, m1, s1 = (14, 47, 50)
-                    h2, m2, s2 = (14, 47, 55)
-                    h3, m3, s3 = (14, 48, 0)
-                    h4, m4, s4 = (14, 48, 10)
-                    h5, m5, s5 = (14, 48, 40)
-                    h6, m6, s6 = (14, 48, 50)
-                    s1_start = CronTrigger(day_of_week=day, hour=h1, minute=m1, second=s1)
-                    s1_stop = CronTrigger(day_of_week=day, hour=h2, minute=m2, second=s2)
-                    s2_start = CronTrigger(day_of_week=day, hour=h3, minute=m3, second=s3)
-                    s2_stop = CronTrigger(day_of_week=day, hour=h4, minute=m4, second=s4)
-                    s3_start = CronTrigger(day_of_week=day, hour=h5, minute=m5, second=s5)
-                    s3_stop = CronTrigger(day_of_week=day, hour=h6, minute=m6, second=s6)
+                time_ranges = [
+                    ((14, 47, 50), (14, 47, 55)),  # S1
+                    ((14, 48, 0), (14, 48, 10)),  # S2
+                    ((14, 48, 40), (14, 48, 50)),  # S3
+                ]
 
-                    self.scheduler.add_job(self.start_detection, trigger=s1_start, id=f"s1_start_{day}", replace_existing=True)
-                    self.scheduler.add_job(self.stop_detection, trigger=s1_stop, id=f"s1_stop_{day}", replace_existing=True)
-
-                    self.scheduler.add_job(self.start_detection, trigger=s2_start, id=f"s2_start_{day}", replace_existing=True)
-                    self.scheduler.add_job(self.stop_detection, trigger=s2_stop, id=f"s2_stop_{day}", replace_existing=True)
-
-                    self.scheduler.add_job(self.start_detection, trigger=s3_start, id=f"s3_start_{day}", replace_existing=True)
-                    self.scheduler.add_job(self.stop_detection, trigger=s3_stop, id=f"s3_stop_{day}", replace_existing=True)
             elif self.schedule_type == "cd":
-                work_days = ["mon", "tue", "wed", "thu", "fri"]
-                for day in work_days:
-                    # S1 : 06:00 - 08:30
-                    h1, m1, s1 = (15, 5, 50)
-                    h2, m2, s2 = (15, 6, 0)
+                time_ranges = [((15, 5, 50), (15, 6, 0))]
+
+            elif self.schedule_type == "bcd":
+                time_ranges = [((16, 15, 30), (16, 15, 40))]
+
+            for day in work_days:
+                for idx, (start_time, stop_time) in enumerate(time_ranges, start=1):
+                    h1, m1, s1 = start_time
+                    h2, m2, s2 = stop_time
                     start_trigger = CronTrigger(day_of_week=day, hour=h1, minute=m1, second=s1)
-                    self.scheduler.add_job(self.start_detection, trigger=start_trigger, id=f"start_{day}", replace_existing=True)
+                    job_id_start = f"{self.schedule_type}_start_{day}_{idx}"
+                    self.scheduler.add_job(self.start_detection, trigger=start_trigger, id=job_id_start, replace_existing=True)
                     stop_trigger = CronTrigger(day_of_week=day, hour=h2, minute=m2, second=s2)
-                    self.scheduler.add_job(self.stop_detection, trigger=stop_trigger, id=f"stop_{day}", replace_existing=True)
-            elif self.schedule_type == "bcd":
-                work_days = ["mon", "tue", "wed", "thu", "fri"]
-                for day in work_days:
-                    # S1 : 06:00 - 08:30
-                    h1, m1, s1 = (15, 19, 10)
-                    h2, m2, s2 = (15, 19, 30)
-                    start_trigger = CronTrigger(day_of_week=day, hour=h1, minute=m1, second=s1)
-                    self.scheduler.add_job(self.start_detection, trigger=start_trigger, id=f"start_{day}", replace_existing=True)
-                    stop_trigger = CronTrigger(day_of_week=day, hour=h2, minute=m2, second=s2)
-                    self.scheduler.add_job(self.stop_detection, trigger=stop_trigger, id=f"stop_{day}", replace_existing=True)
-            elif self.schedule_type == "ctd":
-                pass
-            elif self.schedule_type == "dd":
-                pass
-            elif self.schedule_type == "bcd":
-                pass
-            elif self.schedule_type == "bcd":
-                pass
+                    job_id_stop = f"{self.schedule_type}_stop_{day}_{idx}"
+                    self.scheduler.add_job(self.stop_detection, trigger=stop_trigger, id=job_id_stop, replace_existing=True)
 
     def shutdown(self):
         print("Shutdown scheduler and Program if not running...")
