@@ -16,7 +16,13 @@ all_camera = [
     "CUTTING2",
 ]
 
-pcs = ["PC-100", "PC-101", "PC-102", "PC-8"]
+pcs = [
+    "PC-100",
+    "PC-101",
+    "PC-102",
+    "PC-8",
+    # "TroppoLungo",
+]
 
 
 def distribute_cameras(all_cameras, pcs, special_pc="PC-8"):
@@ -58,17 +64,21 @@ processes = []
 cwd = Path.cwd()
 script_dir = Path(__file__).resolve().parent
 
-template = """
-from bcd_sch import Scheduling
-import time
+template = """import time, os, sys
+
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.join(current_dir, "..")
+sys.path.append(parent_dir)
+from libs.Scheduler import Scheduler
 
 
 detector_args = {{
     "camera_name": "{camera}",
-    "window_size": (320, 240)
+    "window_size": (320, 240),
+    "is_insert": False,
 }}
-scheduler = Scheduling(detector_args, "ODOS")
-print("Running on PC:", "{pc_name}")
+scheduler = Scheduler(detector_args, "bcd")
 try:
     while True:
         time.sleep(1)
@@ -76,6 +86,7 @@ except KeyboardInterrupt:
     print("Program terminated by user.")
     scheduler.shutdown()
 """
+
 pc_name = socket.gethostname()
 
 for cam in camera_list:

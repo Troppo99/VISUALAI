@@ -225,8 +225,7 @@ class BroCarpDetector:
             if (current_time - self.trail_map_start_time) > 60 and not self.capture_done:
                 self.capture_done = True
 
-        # alpha = 1
-        # output_frame = cv2.addWeighted(output_frame, 1.0, self.trail_map_mask, alpha, 0)
+
         mask_non_black = np.any(self.trail_map_mask != [0, 0, 0], axis=-1)
         output_frame[mask_non_black] = self.trail_map_mask[mask_non_black]
 
