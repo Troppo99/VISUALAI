@@ -3,9 +3,9 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from pytz import timezone
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.join(current_dir, "..")
-sys.path.append(parent_dir)
+# current_dir = os.path.dirname(os.path.abspath(__file__))
+# parent_dir = os.path.join(current_dir, "..")
+sys.path.append(r"\\10.5.0.3\VISUALAI\website-django\five_s\src")
 
 
 class Scheduler:
@@ -101,8 +101,8 @@ class Scheduler:
                 work_days = ["mon", "tue", "wed", "thu", "fri"]
                 for day in work_days:
                     # S1 : 06:00 - 08:30
-                    h1, m1, s1 = (14, 36, 10)
-                    h2, m2, s2 = (14, 36, 29)
+                    h1, m1, s1 = (15, 19, 10)
+                    h2, m2, s2 = (15, 19, 30)
                     start_trigger = CronTrigger(day_of_week=day, hour=h1, minute=m1, second=s1)
                     self.scheduler.add_job(self.start_detection, trigger=start_trigger, id=f"start_{day}", replace_existing=True)
                     stop_trigger = CronTrigger(day_of_week=day, hour=h2, minute=m2, second=s2)
