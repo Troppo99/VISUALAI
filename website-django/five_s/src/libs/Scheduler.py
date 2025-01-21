@@ -52,20 +52,24 @@ class Scheduler:
             time_ranges = []
 
             if self.schedule_type == "bd_office":
-                time_ranges = [((9, 57, 0), (9, 57, 10))]  # satu rentang
+                time_ranges = [((9, 57, 0), (9, 57, 10))]
 
             elif self.schedule_type == "bd_sewing":
                 time_ranges = [
-                    ((14, 47, 50), (14, 47, 55)),  # S1
-                    ((14, 48, 0), (14, 48, 10)),  # S2
-                    ((14, 48, 40), (14, 48, 50)),  # S3
+                    # S1 : 07:30 - 09:45
+                    # S2 : 09:45 - 12:50
+                    # S3 : 12:50 - 13:05
+                    ((7, 30, 0), (9, 44, 0)),  # S1
+                    ((9, 45, 0), (12, 49, 0)),  # S2
+                    ((12, 50, 0), (13, 5, 0)),  # S3
                 ]
 
             elif self.schedule_type == "cd":
-                time_ranges = [((15, 5, 50), (15, 6, 0))]
+                time_ranges = [((6, 0, 0), (8, 30, 0))]
 
             elif self.schedule_type == "bcd":
-                time_ranges = [((16, 15, 30), (16, 15, 40))]
+                work_days = ["sat"]
+                time_ranges = [((6, 0, 0), (10, 0, 0))]
 
             for day in work_days:
                 for idx, (start_time, stop_time) in enumerate(time_ranges, start=1):
