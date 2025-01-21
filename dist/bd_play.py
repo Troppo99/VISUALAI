@@ -2,14 +2,36 @@ import subprocess, socket
 from pathlib import Path
 
 all_camera = [
-    "HALAMANDEPAN1",
+    "BUFFER1",
+    "CUTTING3",
     "EKSPEDISI1",
-    "CUTTING5",
+    "FOLDING2",
+    "FOLDING3",
+    "FREEMETAL1",
+    "FREEMETAL2",
+    "GUDANGACC1",
+    "GUDANGACC2",
+    "GUDANGACC3",
+    "GUDANGACC4",
+    "INNERBOX1",
+    "KANTIN1",
+    "LINEMANUAL10",
+    "LINEMANUAL14",
+    "LINEMANUAL15",
+    "METALDET1",
+    "SEWING1",
+    "SEWING2",
+    "SEWING3",
+    "SEWING4",
+    "SEWING5",
+    "SEWING6",
+    "SEWING7",
+    "SEWINGBACK1",
+    "SEWINGBACK2",
     "SEWINGOFFICE",
-    # "OFFICE1",
-    # "OFFICE2",
-    # "OFFICE3",
 ]
+
+
 pcs = [
     "PC-100",
     "PC-101",
@@ -54,6 +76,7 @@ else:
     print(f"PC '{nama_pc}' tidak dikenali. Tidak ada kamera yang dialokasikan.")
     camera_list = []
 
+
 processes = []
 cwd = Path.cwd()
 script_dir = Path(__file__).resolve().parent
@@ -61,9 +84,7 @@ script_dir = Path(__file__).resolve().parent
 template = """import time, os, sys
 
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.join(current_dir, "..")
-sys.path.append(parent_dir)
+sys.path.append(r"\\10.5.0.3\VISUALAI\website-django\five_s\src")
 from libs.Scheduler import Scheduler
 
 
@@ -72,7 +93,7 @@ detector_args = {{
     "window_size": (320, 240),
     "is_insert": False,
 }}
-scheduler = Scheduler(detector_args, "cd")
+scheduler = Scheduler(detector_args, "bd_sewing")
 try:
     while True:
         time.sleep(1)
