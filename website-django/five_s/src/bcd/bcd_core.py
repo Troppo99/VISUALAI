@@ -225,8 +225,11 @@ class BroCarpDetector:
             if (current_time - self.trail_map_start_time) > 60 and not self.capture_done:
                 self.capture_done = True
 
-        alpha = 0.5
-        output_frame = cv2.addWeighted(output_frame, 1.0, self.trail_map_mask, alpha, 0)
+        # alpha = 1
+        # output_frame = cv2.addWeighted(output_frame, 1.0, self.trail_map_mask, alpha, 0)
+        mask_non_black = np.any(self.trail_map_mask != [0, 0, 0], axis=-1)
+        output_frame[mask_non_black] = self.trail_map_mask[mask_non_black]
+
         cvzone.putTextRect(output_frame, f"Percentage: {overlap_percentage:.2f}%", (10, 60), scale=1, thickness=2, offset=5)
         return output_frame, overlap_percentage
 
@@ -355,5 +358,5 @@ class BroCarpDetector:
 
 
 if __name__ == "__main__":
-    bcd = BroCarpDetector(camera_name="ROBOTIC")
+    bcd = BroCarpDetector(camera_name="ROBOTICS", is_insert=False)
     bcd.main()
