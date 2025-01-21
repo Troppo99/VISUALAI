@@ -3,8 +3,6 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from pytz import timezone
 
-# current_dir = os.path.dirname(os.path.abspath(__file__))
-# parent_dir = os.path.join(current_dir, "..")
 sys.path.append(r"\\10.5.0.3\VISUALAI\website-django\five_s\src")
 
 
