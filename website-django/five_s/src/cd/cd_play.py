@@ -4,6 +4,8 @@ from pathlib import Path
 all_camera = [
     "HALAMANDEPAN1",
     "EKSPEDISI1",
+    "CUTTING5",
+    "SEWINGOFFICE",
     # "OFFICE1",
     # "OFFICE2",
     # "OFFICE3",
