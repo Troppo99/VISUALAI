@@ -3,7 +3,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from pytz import timezone
 
-sys.path.append(r"\\10.5.0.3\VISUALAI\website-django\five_s\src")
+sys.path.append(r"\\\\10.5.0.3\\VISUALAI\\website-django\\five_s\\src")
 
 
 class Scheduler:
@@ -11,11 +11,11 @@ class Scheduler:
         self.lock = threading.Lock()
         with self.lock:
             if schedule_type in ["bd_office", "bd_sewing"]:
-                from bd.bd_core import BroomDetector as Detector
+                from core.BroomDetector import BroomDetector as Detector
             elif schedule_type == "cd":
-                from cd.cd_core import CarpalDetector as Detector
+                from core.CarpalDetector import CarpalDetector as Detector
             elif schedule_type == "bcd":
-                from bcd.bcd_core import BroCarpDetector as Detector
+                from core.BroCarpDetector import BroCarpDetector as Detector
         self.Detector = Detector
         self.detector_args = detector_args
         self.schedule_type = schedule_type

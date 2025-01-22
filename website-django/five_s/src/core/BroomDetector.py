@@ -1,16 +1,14 @@
 import cv2, cvzone, json, math, numpy as np, os, queue, threading, time, torch, sys
-from shapely.geometry import Polygon, box
+from shapely.geometry import Polygon
 from shapely.ops import unary_union
 from ultralytics import YOLO
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.join(current_dir, "..")
-sys.path.append(parent_dir)
+sys.path.append(r"\\\\10.5.0.3\\VISUALAI\\website-django\\five_s\\src")
 from libs.DataHandler import DataHandler
 
 
-class CarpalDetector:
-    def __init__(self, confidence_threshold=0.5, video_source=None, camera_name=None, window_size=(540, 360), stop_event=None, is_insert=True):
+class BroomDetector:
+    def __init__(self, confidence_threshold=0.5, video_source=None, camera_name=None, window_size=(320, 240), stop_event=None, is_insert=True):
         self.stop_event = stop_event
         if self.stop_event is None:
             self.stop_event = threading.Event()
@@ -22,7 +20,7 @@ class CarpalDetector:
         self.rois, self.ip_camera = self.camera_config()
         self.choose_video_source()
         self.prev_frame_time = 0
-        self.model = YOLO(r"\\10.5.0.3\VISUALAI\website-django\static\resources\models\yolo11l-pose.pt").to("cuda")
+        self.model = YOLO(r"\\10.5.0.3\VISUALAI\website-django\static\resources\models\bd6l.pt").to("cuda")
         self.model.overrides["verbose"] = False
 
         if len(self.rois) > 1:
@@ -39,7 +37,6 @@ class CarpalDetector:
         self.trail_map_start_time = None
         self.start_run_time = time.time()
         self.capture_done = False
-        self.pairs_human = [(0, 1), (0, 2), (1, 2), (2, 4), (1, 3), (4, 6), (3, 5), (5, 6), (6, 8), (8, 10), (5, 7), (7, 9), (6, 12), (12, 11), (11, 5), (12, 14), (14, 16), (11, 13), (13, 15)]
         self.is_insert = is_insert
 
     def camera_config(self):
@@ -47,7 +44,7 @@ class CarpalDetector:
             config = json.load(f)
         ip = config[self.camera_name]["ip"]
         scaled_rois = []
-        rois_path = config[self.camera_name]["cd_rois"]
+        rois_path = config[self.camera_name]["bd_rois"]
         with open(rois_path, "r") as rois_file:
             original_rois = json.load(rois_file)
         for roi_group in original_rois:
@@ -70,7 +67,7 @@ class CarpalDetector:
                 continue
             pts = np.array(roi.exterior.coords, np.int32)
             pts = pts.reshape((-1, 1, 2))
-            cv2.polylines(frame, [pts], True, (0, 255, 255), 2)
+            cv2.polylines(frame, [pts], True, (0, 255, 0), 2)
 
     def choose_video_source(self):
         if self.video_source is None:
@@ -110,52 +107,45 @@ class CarpalDetector:
                     pass
             cap.release()
 
-    def export_frame_pose(self, frame):
+    def export_frame_detect(self, frame):
         with torch.no_grad():
-            results = self.model(frame, stream=True, imgsz=self.process_size[0], task="pose")
-
-        keypoint_positions = []
+            results = self.model(frame, stream=True, imgsz=self.process_size[0])
+        boxes = []
         for result in results:
-            if result.keypoints is None:
-                continue
-            if not hasattr(result.keypoints, "conf") or result.keypoints.conf is None:
-                continue
-
-            kp_tensor = result.keypoints.xy.cpu().numpy()
-            kp_conf = result.keypoints.conf.cpu().numpy()
-            for kp_arr, kp_c in zip(kp_tensor, kp_conf):
-                single_person_kps = []
-                for (x, y), c in zip(kp_arr, kp_c):
-                    if c >= self.confidence_threshold:
-                        single_person_kps.append((int(x), int(y)))
-                    else:
-                        single_person_kps.append(None)
-                keypoint_positions.append(single_person_kps)
-
-        return keypoint_positions
+            for box in result.boxes:
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                conf = box.conf[0]
+                class_id = self.model.names[int(box.cls[0])]
+                if conf > self.confidence_threshold:
+                    boxes.append((x1, y1, x2, y2, class_id))
+        return boxes
 
     def process_frame(self, frame):
         frame_resized = cv2.resize(frame, self.process_size)
         self.draw_rois(frame_resized)
-        keypoint_positions = self.export_frame_pose(frame_resized)
+        boxes = self.export_frame_detect(frame_resized)
         output_frame = frame_resized.copy()
         detected = False
-        for kp_list in keypoint_positions:
-            for idx in [9, 10]:
-                if idx < len(kp_list) and kp_list[idx] is not None:
-                    (x, y) = kp_list[idx]
-                    kp_polygon = box(x - 10, y - 10, x + 10, y + 10)
-                    if self.union_roi is not None:
-                        current_area = kp_polygon.intersection(self.union_roi)
-                    else:
-                        current_area = kp_polygon
+        for box in boxes:
+            x1, y1, x2, y2, class_id = box
+            overlap_results = self.check_overlap(x1, y1, x2, y2)
+            if any(overlap_results):
+                detected = True
+                obj_box_polygon = Polygon([(x1, y1), (x2, y1), (x2, y2), (x1, y2)])
+                if self.union_roi is not None:
+                    current_area = obj_box_polygon.intersection(self.union_roi)
+                else:
+                    current_area = obj_box_polygon
 
-                    if not current_area.is_empty:
-                        new_area = current_area.difference(self.trail_map_polygon)
-                        if not new_area.is_empty:
-                            self.trail_map_polygon = self.trail_map_polygon.union(new_area)
-                            self.draw_polygon_on_mask(new_area, self.trail_map_mask)
-                        detected = True
+                if not current_area.is_empty:
+                    new_area = current_area.difference(self.trail_map_polygon)
+
+                    if not new_area.is_empty:
+                        self.trail_map_polygon = self.trail_map_polygon.union(new_area)
+                        self.draw_polygon_on_mask(new_area, self.trail_map_mask, color=(0, 255, 0))
+
+                cvzone.cornerRect(output_frame, (x1, y1, x2 - x1, y2 - y1), l=10, rt=0, t=2, colorC=(0, 255, 255))
+                cvzone.putTextRect(output_frame, f"{class_id} {overlap_results}", (x1, y1), scale=1, thickness=2, offset=5)
 
         overlap_percentage = 0
         if self.union_roi and not self.union_roi.is_empty:
@@ -178,17 +168,16 @@ class CarpalDetector:
                 self.reset_trail_map()
 
         if overlap_percentage >= 50 and self.trail_map_start_time is not None:
-            if (current_time - self.trail_map_start_time) > 60 and not self.capture_done:
-                print("capture, save, and send (pose version)")
+            if current_time - self.trail_map_start_time > 60 and not self.capture_done:
+                print("capture, save, and send")
                 self.capture_done = True
 
         alpha = 0.5
-        cv2.addWeighted(output_frame, 1.0, self.trail_map_mask, 1 - alpha, 0, output_frame)
-        cvzone.putTextRect(output_frame, f"Overlap: {overlap_percentage:.2f}%", (10, 30), scale=1, thickness=2, offset=5)
+        output_frame = cv2.addWeighted(output_frame, 1.0, self.trail_map_mask, alpha, 0)
+        cvzone.putTextRect(output_frame, f"Percentage: {overlap_percentage:.2f}%", (10, 60), scale=1, thickness=2, offset=5)
         return output_frame, overlap_percentage
 
     def reset_trail_map(self):
-        # print("Reset trail map.")
         self.trail_map_polygon = Polygon()
         self.trail_map_mask = np.zeros((self.process_size[1], self.process_size[0], 3), dtype=np.uint8)
         self.trail_map_start_time = None
@@ -201,20 +190,40 @@ class CarpalDetector:
             polygons = [polygon]
         elif polygon.geom_type == "MultiPolygon":
             polygons = polygon.geoms
-        else:
+        elif polygon.geom_type == "GeometryCollection":
             polygons = []
+            for geom in polygon.geoms:
+                if geom.geom_type in ["Polygon", "MultiPolygon"]:
+                    if geom.geom_type == "Polygon":
+                        polygons.append(geom)
+                    elif geom.geom_type == "MultiPolygon":
+                        polygons.extend(geom.geoms)
+        else:
+            return
 
         for poly in polygons:
-            if not poly.is_empty:
-                pts = np.array(poly.exterior.coords, np.int32)
-                pts = pts.reshape((-1, 1, 2))
-                cv2.fillPoly(mask, [pts], color)
+            if poly.is_empty:
+                continue
+            pts = np.array(poly.exterior.coords, np.int32)
+            pts = pts.reshape((-1, 1, 2))
+            cv2.fillPoly(mask, [pts], color)
+
+    def check_overlap(self, x1, y1, x2, y2):
+        main_box = Polygon([(x1, y1), (x2, y1), (x2, y2), (x1, y2)])
+        overlap_results = []
+        for roi in self.rois:
+            other_polygon = Polygon(roi)
+            intersection_area = main_box.intersection(other_polygon).area
+            union_area = main_box.union(other_polygon).area
+            iou = intersection_area / union_area if union_area != 0 else 0
+            overlap_results.append(iou > 0)
+        return overlap_results
 
     def main(self):
         state = ""
         skip_frames = 2
         frame_count = 0
-        window_name = f"CD: {self.camera_name}"
+        window_name = f"BD:{self.camera_name}"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(window_name, self.window_size)
         final_overlap = 0
@@ -279,19 +288,19 @@ class CarpalDetector:
                 cv2.destroyAllWindows()
         finally:
             if final_overlap >= 50:
-                state = "Mengelap kaca selesai"
+                state = "Menyapu selesai"
             elif final_overlap >= 30:
-                state = "Mengelap kaca tidak selesai"
+                state = "Menyapu tidak selesai"
             else:
-                state = "Tidak Mengelap kaca"
-            print(f"[{self.camera_name}] => {state}")
+                state = "Tidak menyapu"
+            print(f"{self.camera_name} => {state}")
 
             if "frame_resized" in locals():
-                DataHandler(task="-C").save_data(frame_resized, final_overlap, self.camera_name, insert=self.is_insert)
+                DataHandler(task="-B").save_data(frame_resized, final_overlap, self.camera_name, insert=self.is_insert)
             else:
                 print("No frame to save.")
 
 
 if __name__ == "__main__":
-    detector = CarpalDetector(camera_name="ROBOTIC")
-    detector.main()
+    bd = BroomDetector(camera_name="ROBOTICS", is_insert=False)
+    bd.main()

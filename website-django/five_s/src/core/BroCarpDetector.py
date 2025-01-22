@@ -3,7 +3,7 @@ from shapely.geometry import Polygon, box
 from shapely.ops import unary_union
 from ultralytics import YOLO
 
-sys.path.append(r"\\\\10.5.0.3\\VISUALAI\\website-django\\five_s\\src\\libs")
+sys.path.append(r"\\\\10.5.0.3\\VISUALAI\\website-django\\five_s\\src")
 from libs.DataHandler import DataHandler
 
 
