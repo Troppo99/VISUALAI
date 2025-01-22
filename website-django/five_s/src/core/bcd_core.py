@@ -3,9 +3,7 @@ from shapely.geometry import Polygon, box
 from shapely.ops import unary_union
 from ultralytics import YOLO
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.join(current_dir, "..")
-sys.path.append(parent_dir)
+sys.path.append(r"\\\\10.5.0.3\\VISUALAI\\website-django\\five_s\\src\\libs")
 from libs.DataHandler import DataHandler
 
 
