@@ -6,8 +6,8 @@ from pytz import timezone
 # Pastikan folder 'libs' dan 'core' punya __init__.py
 # Sesuaikan path agar Python mengenali libs.
 # (Boleh dibiarkan kalau sdh di-append oleh run-xxx.py)
-sys.path.append(r"C:\xampp\htdocs\VISUALAI\website-django\five_s\src")
-# sys.path.append(r"\\10.5.0.3\\VISUALAI\\website-django\\five_s\\src")
+# sys.path.append(r"C:\xampp\htdocs\VISUALAI\website-django\five_s\src")
+sys.path.append(r"\\10.5.0.3\VISUALAI\website-django\five_s\src")
 
 
 class Scheduler:
