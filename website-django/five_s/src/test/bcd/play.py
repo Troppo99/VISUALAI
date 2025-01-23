@@ -43,17 +43,17 @@ camera_schedules = {{
     "CUTTING3": {{
         "work_days": ["mon", "tue", "wed", "thu", "fri"], 
         "time_ranges": [
-            ((12, 46, 0), (12, 46, 10)),
-            ((12, 46, 15), (12, 46, 20)),
-            ((12, 46, 25), (12, 46, 40)),
+            ((15, 23, 0), (15, 23, 10)),
+            ((15, 23, 15), (15, 23, 20)),
+            ((15, 23, 25), (15, 23, 40)),
         ],
     }},
     "CUTTING2": {{
         "work_days": ["mon", "tue", "wed", "thu", "fri"], 
         "time_ranges": [
-            ((12, 46, 0), (12, 46, 10)),
-            ((12, 46, 15), (12, 46, 20)),
-            ((12, 46, 25), (12, 46, 40)),
+            ((15, 23, 0), (15, 23, 10)),
+            ((15, 23, 15), (15, 23, 20)),
+            ((15, 23, 25), (15, 23, 40)),
         ],
     }},
     "DEFAULT": {{
@@ -119,28 +119,28 @@ except KeyboardInterrupt:
     def create_and_run_scripts(self):
         for cam in self.camera_list:
             python_executable = self.cwd / ".venv" / "Scripts" / "python.exe"
-            script_path = self.script_dir / f"run-{cam}.py"
+            script_path = self.script_dir / f"build/run-{cam}.py"
 
             if not python_executable.exists():
                 print(f"Python executable not found: {python_executable}")
                 continue
 
-            if not script_path.exists():
-                print(f"Script not found: {script_path}. Membuat file baru...")
-                try:
-                    with open(script_path, "w", encoding="utf-8") as f:
-                        f.write(self.template.format(camera=cam))
-                    print(f"File {script_path} berhasil dibuat.")
-                except Exception as e:
-                    print(f"Gagal membuat file {script_path}: {e}")
-                    continue
+            if script_path.exists():
+                print(f"Script already exists: {script_path}. Overwriting file...")
+                script_path.unlink()
+
+            print(f"Creating file : {script_path}...")
+            try:
+                with open(script_path, "w", encoding="utf-8") as f:
+                    f.write(self.template.format(camera=cam))
+                print(f"File {script_path} berhasil ditulis (overwrite).")
+            except Exception as e:
+                print(f"Gagal menulis file {script_path}: {e}")
+                continue
 
             try:
                 p = subprocess.Popen(
-                    [
-                        str(python_executable),
-                        str(script_path),
-                    ],
+                    [str(python_executable), str(script_path)],
                     cwd=self.script_dir,
                 )
                 self.processes.append(p)
