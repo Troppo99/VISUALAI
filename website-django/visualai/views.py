@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.http import StreamingHttpResponse, Http404
-from five_s.src.dist.ContopDetector import ContopDetector
+from five_s.src.dist.web.ContopDetector import ContopDetector
 
 CAMERA_NAMES = [
     "FREEMETAL1",
