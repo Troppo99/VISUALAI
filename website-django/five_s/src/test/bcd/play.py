@@ -25,7 +25,7 @@ class CameraPlay:
             "PC-101",
             "PC-102",
             "PC-8",
-            "TroppoLungo",
+            # "TroppoLungo",
         ]
 
         self.camera_distribution = {}
@@ -41,24 +41,24 @@ from libs.test_Scheduler import Scheduler
 from pathlib import Path
 
 camera_schedules = {{
-    "CUTTING3": {{
-        "work_days": ["mon", "tue", "wed", "thu", "fri"], 
-        "time_ranges": [
-            ((16, 10, 0), (16, 10, 10)),
-            ((16, 10, 15), (16, 10, 20)),
-            ((16, 10, 25), (16, 10, 40)),
-        ],
-    }},
-    "CUTTING2": {{
-        "work_days": ["mon", "tue", "wed", "thu", "fri"], 
-        "time_ranges": [
-            ((16, 10, 0), (16, 10, 10)),
-            ((16, 10, 15), (16, 10, 20)),
-            ((16, 10, 25), (16, 10, 40)),
-        ],
-    }},
+    # "CUTTING3": {{
+    #     "work_days": ["mon", "tue", "wed", "thu", "fri"], 
+    #     "time_ranges": [
+    #         ((16, 29, 0), (16, 29, 10)),
+    #         ((16, 29, 15), (16, 29, 20)),
+    #         ((16, 29, 25), (16, 29, 40)),
+    #     ],
+    # }},
+    # "CUTTING2": {{
+    #     "work_days": ["mon", "tue", "wed", "thu", "fri"], 
+    #     "time_ranges": [
+    #         ((16, 29, 0), (16, 29, 10)),
+    #         ((16, 29, 15), (16, 29, 20)),
+    #         ((16, 29, 25), (16, 29, 40)),
+    #     ],
+    # }},
     "DEFAULT": {{
-        "work_days": ["mon", "tue", "wed", "thu", "fri"], 
+        "work_days": ["sat"], 
         "time_ranges": [
             ((10, 59, 0), (10, 59, 10))
         ],
@@ -72,7 +72,7 @@ schedule_config = camera_schedules.get(camera_name, camera_schedules["DEFAULT"])
 detector_args = {{
     "camera_name": camera_name,
     "window_size": (320, 240),
-    "is_insert": False,
+    "is_insert": True,
 }}
 scheduler = Scheduler(detector_args, schedule_config, Path(__file__).resolve().parent.parent.name)
 

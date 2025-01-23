@@ -43,7 +43,7 @@ class CameraPlay:
             "PC-101",
             "PC-102",
             "PC-8",
-            "TroppoLungo",
+            # "TroppoLungo",
         ]
 
         self.camera_distribution = {}
@@ -59,24 +59,24 @@ from libs.test_Scheduler import Scheduler
 from pathlib import Path
 
 camera_schedules = {{
-    "OFFICE1": {{
-        "work_days": ["mon", "tue", "wed", "thu", "fri"], 
-        "time_ranges": [((15, 23, 0), (15, 23, 10))],
-    }},
-    "OFFICE2": {{
-        "work_days": ["mon", "tue", "wed", "thu", "fri"], 
-        "time_ranges": [((15, 23, 0), (15, 23, 10))],
-    }},
-    "OFFICE3": {{
-        "work_days": ["mon", "tue", "wed", "thu", "fri"], 
-        "time_ranges": [((15, 23, 0), (15, 23, 10))],
-    }},
+    # "OFFICE1": {{
+    #     "work_days": ["mon", "tue", "wed", "thu", "fri"], 
+    #     "time_ranges": [((15, 23, 0), (15, 23, 10))],
+    # }},
+    # "OFFICE2": {{
+    #     "work_days": ["mon", "tue", "wed", "thu", "fri"], 
+    #     "time_ranges": [((15, 23, 0), (15, 23, 10))],
+    # }},
+    # "OFFICE3": {{
+    #     "work_days": ["mon", "tue", "wed", "thu", "fri"], 
+    #     "time_ranges": [((15, 23, 0), (15, 23, 10))],
+    # }},
     "DEFAULT": {{
         "work_days": ["mon", "tue", "wed", "thu", "fri"], 
         "time_ranges": [
-            ((15, 52, 0), (15, 52, 10)),
-            ((15, 52, 15), (15, 52, 20)),
-            ((15, 52, 25), (15, 52, 40)),
+            ((7, 30, 0), (9, 44, 0)),
+            ((9, 45, 0), (12, 49, 0)),
+            ((12, 50, 0), (13, 5, 0)),
         ],
     }}
 }}

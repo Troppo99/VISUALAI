@@ -16,11 +16,11 @@ class CameraPlay:
         ]
 
         self.pcs = [
-            # "PC-100",
-            # "PC-101",
+            "PC-100",
+            "PC-101",
             "PC-102",
             "PC-8",
-            "TroppoLungo",
+            # "TroppoLungo",
         ]
 
         self.camera_distribution = {}
@@ -37,15 +37,15 @@ from pathlib import Path
 
 
 camera_schedules = {{
-    "CUTTING5": {{
-        "work_days": ["mon", "tue", "wed", "thu", "fri"], 
-        "time_ranges": [((15, 23, 0), (15, 23, 10))],
-    }},
+    # "CUTTING5": {{
+    #     "work_days": ["mon", "tue", "wed", "thu", "fri"], 
+    #     "time_ranges": [((15, 23, 0), (15, 23, 10))],
+    # }},
 
     "DEFAULT": {{
         "work_days": ["mon", "tue", "wed", "thu", "fri"], 
         "time_ranges": [
-            ((15, 49, 0), (15, 49, 10)),
+            ((6, 0, 0), (8, 30, 0)),
         ],
     }}
 }}
