@@ -51,13 +51,7 @@ class ZoomIn:
 
 
 class DefectDetector(ZoomIn):
-
-    def __init__(
-        self,
-        video_source=None,
-        camera_name=None,
-        stop_event=None,
-    ):
+    def __init__(self, video_source=None, camera_name=None, stop_event=None):
         super().__init__()  # Tidak melewatkan argumen
         self.stop_event = stop_event if stop_event else threading.Event()
         self.confidence_threshold = 0
