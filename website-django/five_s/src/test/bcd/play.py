@@ -37,23 +37,23 @@ class CameraPlay:
         self.template = r"""import time, sys
 
 sys.path.append(r"\\10.5.0.3\VISUALAI\website-django\five_s\src")
-from libs.Scheduler import Scheduler
+from libs.test_Scheduler import Scheduler
 
 camera_schedules = {{
     "CUTTING3": {{
         "work_days": ["mon", "tue", "wed", "thu", "fri"], 
         "time_ranges": [
-            ((8, 34, 0), (8, 34, 10)),
-            ((8, 34, 15), (8, 34, 20)),
-            ((8, 34, 25), (8, 34, 40)),
+            ((12, 46, 0), (12, 46, 10)),
+            ((12, 46, 15), (12, 46, 20)),
+            ((12, 46, 25), (12, 46, 40)),
         ],
     }},
     "CUTTING2": {{
         "work_days": ["mon", "tue", "wed", "thu", "fri"], 
         "time_ranges": [
-            ((8, 5, 0), (8, 5, 10)),
-            ((8, 5, 15), (8, 5, 20)),
-            ((8, 5, 25), (8, 5, 40)),
+            ((12, 46, 0), (12, 46, 10)),
+            ((12, 46, 15), (12, 46, 20)),
+            ((12, 46, 25), (12, 46, 40)),
         ],
     }},
     "DEFAULT": {{
