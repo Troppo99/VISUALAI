@@ -60,7 +60,7 @@ camera_schedules = {{
     "DEFAULT": {{
         "work_days": ["sat"], 
         "time_ranges": [
-            ((10, 59, 0), (10, 59, 10))
+            ((6, 0, 0), (11, 0, 0))
         ],
     }}
 }}

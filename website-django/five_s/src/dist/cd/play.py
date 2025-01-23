@@ -57,7 +57,7 @@ schedule_config = camera_schedules.get(camera_name, camera_schedules["DEFAULT"])
 detector_args = {{
     "camera_name": camera_name,
     "window_size": (320, 240),
-    "is_insert": False,
+    "is_insert": True,
 }}
 scheduler = Scheduler(detector_args, schedule_config, Path(__file__).resolve().parent.parent.name)
 
