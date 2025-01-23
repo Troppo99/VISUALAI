@@ -8,21 +8,16 @@ class CameraPlay:
         self.all_camera = [
             "HALAMANDEPAN1",
             "EKSPEDISI1",
-            "GUDANGACC1",
-            "GUDANGACC2",
-            "FOLDING1",
-            "FOLDING2",
-            "FOLDING3",
-            "METALDET1",
-            "FREEMETAL1",
-            "FREEMETAL2",
-            "CUTTING3",
-            "CUTTING2",
+            "CUTTING5",
+            "SEWINGOFFICE",
+            # "OFFICE1",
+            # "OFFICE2",
+            # "OFFICE3",
         ]
 
         self.pcs = [
-            "PC-100",
-            "PC-101",
+            # "PC-100",
+            # "PC-101",
             "PC-102",
             "PC-8",
             "TroppoLungo",
@@ -40,27 +35,17 @@ sys.path.append(r"\\10.5.0.3\VISUALAI\website-django\five_s\src")
 from libs.test_Scheduler import Scheduler
 from pathlib import Path
 
+
 camera_schedules = {{
-    "CUTTING3": {{
+    "CUTTING5": {{
         "work_days": ["mon", "tue", "wed", "thu", "fri"], 
-        "time_ranges": [
-            ((16, 10, 0), (16, 10, 10)),
-            ((16, 10, 15), (16, 10, 20)),
-            ((16, 10, 25), (16, 10, 40)),
-        ],
+        "time_ranges": [((15, 23, 0), (15, 23, 10))],
     }},
-    "CUTTING2": {{
-        "work_days": ["mon", "tue", "wed", "thu", "fri"], 
-        "time_ranges": [
-            ((16, 10, 0), (16, 10, 10)),
-            ((16, 10, 15), (16, 10, 20)),
-            ((16, 10, 25), (16, 10, 40)),
-        ],
-    }},
+
     "DEFAULT": {{
         "work_days": ["mon", "tue", "wed", "thu", "fri"], 
         "time_ranges": [
-            ((10, 59, 0), (10, 59, 10))
+            ((15, 49, 0), (15, 49, 10)),
         ],
     }}
 }}

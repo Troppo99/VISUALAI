@@ -3,31 +3,22 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from pytz import timezone
 
-# Pastikan folder 'libs' dan 'core' punya __init__.py
-# Sesuaikan path agar Python mengenali libs.
-# (Boleh dibiarkan kalau sdh di-append oleh run-xxx.py)
-# sys.path.append(r"C:\xampp\htdocs\VISUALAI\website-django\five_s\src")
 sys.path.append(r"\\10.5.0.3\VISUALAI\website-django\five_s\src")
 
 
 class Scheduler:
-    def __init__(self, detector_args, schedule_config):
+    def __init__(self, detector_args, schedule_config, code):
         self.schedule_config = schedule_config
-        """
-        detector_args: {
-            "camera_name": str,
-            "schedule_config": { "work_days": [...], "time_ranges": [...] },
-            ...
-        }
-        """
         self.lock = threading.Lock()
         self.detector_args = detector_args
         self.detector = None
-
-        # (OPSIONAL) Pilihan Detector berdasarkan param lain?
-        # Contoh: if schedule_type in ["bd_office", ...], dsb.
-        # Atau jika selalu BroCarpDetector, di sini:
-        from core.BroCarpDetector import BroCarpDetector as Detector
+        with self.lock:
+            if code == "bd":
+                from core.BroomDetector import BroomDetector as Detector
+            elif code == "cd":
+                from core.CarpalDetector import CarpalDetector as Detector
+            elif code == "bcd":
+                from core.BroCarpDetector import BroCarpDetector as Detector
 
         self.Detector = Detector
 

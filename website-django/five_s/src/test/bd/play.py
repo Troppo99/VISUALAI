@@ -43,7 +43,7 @@ class CameraPlay:
             "PC-101",
             "PC-102",
             "PC-8",
-            # "TroppoLungo",
+            "TroppoLungo",
         ]
 
         self.camera_distribution = {}
@@ -56,6 +56,7 @@ class CameraPlay:
 
 sys.path.append(r"\\10.5.0.3\VISUALAI\website-django\five_s\src")
 from libs.test_Scheduler import Scheduler
+from pathlib import Path
 
 camera_schedules = {{
     "OFFICE1": {{
@@ -73,9 +74,9 @@ camera_schedules = {{
     "DEFAULT": {{
         "work_days": ["mon", "tue", "wed", "thu", "fri"], 
         "time_ranges": [
-            ((15, 31, 0), (15, 31, 10)),
-            ((15, 31, 15), (15, 31, 20)),
-            ((15, 31, 25), (15, 31, 40)),
+            ((15, 52, 0), (15, 52, 10)),
+            ((15, 52, 15), (15, 52, 20)),
+            ((15, 52, 25), (15, 52, 40)),
         ],
     }}
 }}
@@ -89,7 +90,7 @@ detector_args = {{
     "window_size": (320, 240),
     "is_insert": False,
 }}
-scheduler = Scheduler(detector_args, schedule_config)
+scheduler = Scheduler(detector_args, schedule_config, Path(__file__).resolve().parent.parent.name)
 
 try:
     while True:
