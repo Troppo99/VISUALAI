@@ -3,7 +3,7 @@ from ultralytics import YOLO
 
 
 def main():
-    video_path = r"C:\xampp\htdocs\VISUALAI\website-django\static\videos\labeling\defect1.mp4"
+    video_path = r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\videos\test.mp4"
     cap = cv2.VideoCapture(video_path)
 
     if not cap.isOpened():

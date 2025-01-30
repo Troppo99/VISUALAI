@@ -3,6 +3,7 @@
 .vscode/*
 archives/static/data/*
 **/images/*
+**/img/*
 **/videos/*
 **/desktop.ini
 *.pyc

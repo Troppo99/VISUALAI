@@ -200,7 +200,7 @@ def find_file_with_any_extension(folder, filename_without_ext, ekstensi_gambar=N
 
 def main():
     # Tentukan path ke folder X
-    folder_X = r"C:\xampp\htdocs\VISUALAI\images\datasets\defect1"  # Ganti dengan path yang sesuai jika diperlukan
+    folder_X = r"C:\xampp\htdocs\VISUALAI\website-django\static\images\datasets\defect2.v1i.yolov11"  # Ganti dengan path yang sesuai jika diperlukan
 
     # Pastikan folder X ada
     if not os.path.isdir(folder_X):
