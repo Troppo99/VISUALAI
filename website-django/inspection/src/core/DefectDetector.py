@@ -58,17 +58,21 @@ class DefectDetector(ZoomIn):
         self.video_source = video_source
         self.camera_name = camera_name
         self.process_size = (1280, 1280)
-        self.ip_camera = self.camera_config()
+        if camera_name not in [0, 1]:
+            self.video = self.camera_config()
+        else:
+            self.video = camera_name
         self.choose_video_source()
         self.prev_frame_time = 0
-        self.model = YOLO(r"C:\xampp\htdocs\VISUALAI\website-django\static\resources\models\defect1l.pt")
+        self.model = YOLO(r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\models\best_temp.pt")
         self.model.overrides["verbose"] = False
 
     def camera_config(self):
         with open(r"C:\xampp\htdocs\VISUALAI\website-django\static\resources\conf\camera_config.json", "r") as f:
             config = json.load(f)
         ip = config[self.camera_name]["ip"]
-        return ip
+        video = f"rtsp://admin:oracle2015@{ip}:554/Streaming/Channels/1"
+        return video
 
     def choose_video_source(self):
         if self.video_source is None:
@@ -76,7 +80,7 @@ class DefectDetector(ZoomIn):
             self.frame_thread = None
             self.video_fps = None
             self.is_local_video = False
-            self.video_source = f"rtsp://admin:oracle2015@{self.ip_camera}:554/Streaming/Channels/1"
+            self.video_source = self.video
         else:
             if os.path.isfile(self.video_source):
                 self.is_local_video = True
@@ -235,6 +239,9 @@ class DefectDetector(ZoomIn):
                         print("Manual stop detected.")
                         self.stop_event.set()
                         break
+                    if key == ord("r") or key == ord("R"):
+                        self.is_zoomed = False
+                        self.zoom_rect = None
 
                 cv2.destroyAllWindows()
                 if self.frame_thread.is_alive():
@@ -335,7 +342,8 @@ class DefectDetector(ZoomIn):
 
 if __name__ == "__main__":
     dfd = DefectDetector(
-        camera_name="CUTTING1",
-        video_source=r"C:\xampp\htdocs\VISUALAI\website-django\static\videos\labeling\defect1.mp4",
+        camera_name=1,
+        video_source=r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\videos\test3.mp4",
+        # video_source=1,
     )
     dfd.main()
