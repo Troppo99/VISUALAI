@@ -3,12 +3,12 @@ from shapely.geometry import Polygon, box
 from shapely.ops import unary_union
 from ultralytics import YOLO
 
-sys.path.append(r"\\\\10.5.0.3\\VISUALAI\\website-django\\five_s\\src")
+sys.path.append(r"\\10.5.0.3\VISUALAI\website-django\five_s\src")
 from libs.DataHandler import DataHandler
 
 
 class BroCarpDetector:
-    def __init__(self, confidence_threshold=0.7, video_source=None, camera_name=None, window_size=(320, 240), stop_event=None, is_insert=True):
+    def __init__(self, confidence_threshold=0.7, video_source=None, camera_name=None, window_size=(320, 240), stop_event=None, is_insert=False):
         self.stop_event = stop_event
         if self.stop_event is None:
             self.stop_event = threading.Event()
