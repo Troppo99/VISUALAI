@@ -1,17 +1,16 @@
 from ultralytics import YOLO
 
 if __name__ == "__main__":
-    model = YOLO("models/yolo11l-seg.pt")
-
+    model = YOLO(r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\resources\models\defect-seg\weights\last.pt")
     model.train(
         task="segment",
-        data="D:/NWR/datasets/contop_united/data.yaml",
+        data=r"C:\xampp\htdocs\VISUALAI\website-django\static\images\datasets\defect2.v1i.yolov11\data.yaml",
         epochs=100,
-        imgsz=640,
-        project="run/contop",
-        name="version2",
+        imgsz=1280,
+        project=r"website-django\inspection\static\resources\models",
+        name="defect-seg",
         device="cuda",
-        batch=16,
-        resume=False,
+        batch=8,
+        resume=True,
         amp=True,
     )
