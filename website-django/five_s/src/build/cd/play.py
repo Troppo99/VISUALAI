@@ -105,7 +105,7 @@ except KeyboardInterrupt:
     def create_and_run_scripts(self):
         for cam in self.camera_list:
             python_executable = self.cwd / ".venv" / "Scripts" / "python.exe"
-            script_path = self.script_dir / f"build/run-{cam}.py"
+            script_path = self.script_dir / f"cache/run-{cam}.py"
 
             if not python_executable.exists():
                 print(f"Python executable not found: {python_executable}")
