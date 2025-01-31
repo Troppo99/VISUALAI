@@ -16,7 +16,7 @@ class YoloInference:
             self.video = camera_name
         self.choose_video_source()
         self.prev_frame_time = 0
-        self.model_detect = YOLO(r"C:\xampp\htdocs\VISUALAI\resources\models\yolo11l.pt")
+        self.model_detect = YOLO(r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\models\defect2l.pt")
         self.model_detect.overrides["verbose"] = False
         self.yolo_task = YoloTask(self.model_detect, self.confidence_threshold, self.process_size)
 
@@ -180,8 +180,8 @@ class YoloTask:
 
 if __name__ == "__main__":
     yi = YoloInference(
-        video_source=None,
-        camera_name="CUTTING1",
+        video_source=1,
+        camera_name=1,
         stop_event=None,
     )
     yi.main()
