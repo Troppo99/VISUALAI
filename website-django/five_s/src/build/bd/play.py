@@ -7,8 +7,16 @@ class CameraPlay:
     def __init__(self):
         self.all_camera = [
             "BUFFER1",
+            "CUTTING1",
+            "CUTTING2",
             "CUTTING3",
-            "EKSPEDISI1",
+            "CUTTING4",
+            "CUTTING5",
+            "CUTTING8",
+            "CUTTING9",
+            "CUTTING10",
+            "EXPEDISI1",
+            "FOLDING1",
             "FOLDING2",
             "FOLDING3",
             "FREEMETAL1",
@@ -17,15 +25,20 @@ class CameraPlay:
             "GUDANGACC2",
             "GUDANGACC3",
             "GUDANGACC4",
+            "GUDANGKAIN1",
+            "GUDANGKAIN2",
+            "GUDANGKAIN3",
+            "GUDANGKAIN4",
+            "GUDANGKAIN5",
             "INNERBOX1",
             "KANTIN1",
             "LINEMANUAL10",
             "LINEMANUAL14",
             "LINEMANUAL15",
             "METALDET1",
-            # "OFFICE1"
-            # "OFFICE2"
-            # "OFFICE3"
+            # "OFFICE1",
+            # "OFFICE2",
+            # "OFFICE3",
             "SEWING1",
             "SEWING2",
             "SEWING3",
@@ -36,7 +49,7 @@ class CameraPlay:
             "SEWINGBACK1",
             "SEWINGBACK2",
             "SEWINGOFFICE",
-        ]
+        ],
 
         self.pcs = [
             "PC-100",
