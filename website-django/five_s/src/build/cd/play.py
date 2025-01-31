@@ -7,7 +7,6 @@ class CameraPlay:
     def __init__(self):
         self.all_camera = [
             "HALAMANDEPAN1",
-            "EKSPEDISI1",
             "CUTTING5",
             "SEWINGOFFICE",
             # "OFFICE1",
