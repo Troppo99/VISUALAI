@@ -205,7 +205,6 @@ class ConesDetector:
 
         return frame_resized, overlap_detected
 
-
     def main(self):
         state = ""
         skip_frames = 2
