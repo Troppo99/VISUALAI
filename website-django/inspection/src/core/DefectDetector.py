@@ -64,7 +64,7 @@ class DefectDetector(ZoomIn):
             self.video = camera_name
         self.choose_video_source()
         self.prev_frame_time = 0
-        self.model = YOLO(r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\models\best_temp.pt")
+        self.model = YOLO(r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\resources\models\defect0-det-1280\weights\best.pt")
         self.model.overrides["verbose"] = False
 
     def camera_config(self):
@@ -252,6 +252,7 @@ class DefectDetector(ZoomIn):
                 while cap.isOpened() and not self.stop_event.is_set():
                     start_time = time.time()
                     ret, frame = cap.read()
+                    frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
                     if not ret:
                         print("Video ended.")
                         break
@@ -343,7 +344,7 @@ class DefectDetector(ZoomIn):
 if __name__ == "__main__":
     dfd = DefectDetector(
         camera_name=1,
-        video_source=r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\videos\test3.mp4",
+        video_source=r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\videos\test0.mp4",
         # video_source=1,
     )
     dfd.main()
