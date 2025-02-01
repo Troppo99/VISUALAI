@@ -8,7 +8,7 @@ class YoloInference:
         self.confidence_threshold = confidence_threshold
         self.video_source = video_source
         self.camera_name = camera_name
-        self.process_size = (1280, 1280)
+        self.process_size = (960, 960)
         self.window_size = (1280, 720)
         if camera_name not in [0, 1]:
             self.video = self.camera_config()
@@ -16,8 +16,8 @@ class YoloInference:
             self.video = camera_name
         self.choose_video_source()
         self.prev_frame_time = 0
-        self.model_detect = YOLO(r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\models\defect2l.pt")
-        self.model_detect.overrides["verbose"] = False
+        self.model_detect = YOLO(r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\resources\models\defect1-seg-960\weights\best.pt")
+        # self.model_detect.overrides["verbose"] = False
         self.yolo_task = YoloTask(self.model_detect, self.confidence_threshold, self.process_size)
 
     def camera_config(self):
@@ -180,8 +180,7 @@ class YoloTask:
 
 if __name__ == "__main__":
     yi = YoloInference(
-        video_source=1,
-        camera_name=1,
-        stop_event=None,
+        camera_name="ROBOTICS",
+        video_source=r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\videos\test3.mp4",
     )
     yi.main()
