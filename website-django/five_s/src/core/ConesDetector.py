@@ -5,7 +5,7 @@ from datetime import datetime
 
 
 class ConesDetector:
-    def __init__(self, confidence_threshold=0.0, video_source=None, camera_name=None, window_size=(320, 240), stop_event=None, is_insert=False, display=True):
+    def __init__(self, confidence_threshold=0.0, video_source=None, camera_name=None, window_size=(320, 240), stop_event=None, is_insert=False):
         self.stop_event = stop_event
         if self.stop_event is None:
             self.stop_event = threading.Event()
@@ -24,9 +24,6 @@ class ConesDetector:
         self.new_width, self.new_height = (960, 540)
         self.fps = 0
         self.borders, self.ip_camera = self.camera_config()
-        self.display = display
-        if not self.display:
-            print(f"B`{self.camera_name} : >>>Display is disabled!<<<")
 
         self.is_local_file = False
         if video_source is not None:
@@ -158,39 +155,38 @@ class ConesDetector:
         if overlap_detected and self.timestamp_start is None:
             self.timestamp_start = datetime.now()
 
-        if self.display:
-            self.draw_borders(frame_resized)
+        self.draw_borders(frame_resized)
 
-            # Buat overlay untuk menggambar polygon dengan warna solid
-            overlay = frame_resized.copy()
+        # Buat overlay untuk menggambar polygon dengan warna solid
+        overlay = frame_resized.copy()
 
-            for poly_xy, inside, (cx, cy) in boxes_info:
-                pts = np.array(poly_xy, np.int32).reshape((-1, 1, 2))
-                if inside:
-                    # Violation
-                    cv2.fillPoly(overlay, [pts], (0, 70, 255))
-                else:
-                    # Warning
-                    cv2.fillPoly(overlay, [pts], (0, 255, 255))
+        for poly_xy, inside, (cx, cy) in boxes_info:
+            pts = np.array(poly_xy, np.int32).reshape((-1, 1, 2))
+            if inside:
+                # Violation
+                cv2.fillPoly(overlay, [pts], (0, 70, 255))
+            else:
+                # Warning
+                cv2.fillPoly(overlay, [pts], (0, 255, 255))
 
-            # Campurkan overlay dengan frame_resized dengan transparansi 50%
-            alpha = 0.5
-            cv2.addWeighted(overlay, alpha, frame_resized, 1 - alpha, 0, frame_resized)
+        # Campurkan overlay dengan frame_resized dengan transparansi 50%
+        alpha = 0.5
+        cv2.addWeighted(overlay, alpha, frame_resized, 1 - alpha, 0, frame_resized)
 
-            # Setelah transparansi diaplikasikan, baru tulis teks di atasnya
-            for poly_xy, inside, (cx, cy) in boxes_info:
-                if inside:
-                    # Hitung waktu violation
-                    if self.violation_start_time is not None:
-                        elapsed = current_time - self.violation_start_time
-                        hh = int(elapsed // 3600)
-                        mm = int((elapsed % 3600) // 60)
-                        ss = int(elapsed % 60)
-                        timer_str = f"{hh:02}:{mm:02}:{ss:02}"
-                        cvzone.putTextRect(frame_resized, timer_str, (int(cx), int(cy) - 40), scale=1, thickness=2, offset=5, colorR=(0, 70, 255), colorT=(255, 255, 255))
-                    cvzone.putTextRect(frame_resized, "Violation!", (int(cx), int(cy) - 10), scale=1, thickness=2, offset=5, colorR=(0, 70, 255), colorT=(255, 255, 255))
-                else:
-                    cvzone.putTextRect(frame_resized, "Warning!", (int(cx), int(cy) - 10), scale=1, thickness=2, offset=5, colorR=(0, 255, 255), colorT=(0, 0, 0))
+        # Setelah transparansi diaplikasikan, baru tulis teks di atasnya
+        for poly_xy, inside, (cx, cy) in boxes_info:
+            if inside:
+                # Hitung waktu violation
+                if self.violation_start_time is not None:
+                    elapsed = current_time - self.violation_start_time
+                    hh = int(elapsed // 3600)
+                    mm = int((elapsed % 3600) // 60)
+                    ss = int(elapsed % 60)
+                    timer_str = f"{hh:02}:{mm:02}:{ss:02}"
+                    cvzone.putTextRect(frame_resized, timer_str, (int(cx), int(cy) - 40), scale=1, thickness=2, offset=5, colorR=(0, 70, 255), colorT=(255, 255, 255))
+                cvzone.putTextRect(frame_resized, "Violation!", (int(cx), int(cy) - 10), scale=1, thickness=2, offset=5, colorR=(0, 70, 255), colorT=(255, 255, 255))
+            else:
+                cvzone.putTextRect(frame_resized, "Warning!", (int(cx), int(cy) - 10), scale=1, thickness=2, offset=5, colorR=(0, 255, 255), colorT=(0, 0, 0))
 
         return frame_resized, overlap_detected
 
@@ -268,10 +264,9 @@ class ConesDetector:
     def main(self):
         process_every_n_frames = 2
         frame_count = 0
-        if self.display:
-            window_name = f"BROOM : {self.camera_name}"
-            cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-            cv2.resizeWindow(window_name, self.window_width, self.window_height)
+        window_name = f"BROOM : {self.camera_name}"
+        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(window_name, self.window_width, self.window_height)
         if self.is_local_file:
             cap = cv2.VideoCapture(self.video_source)
             frame_delay = int(1000 / self.video_fps)
@@ -291,21 +286,16 @@ class ConesDetector:
                 self.prev_frame_time = current_time
                 frame_resized, overlap_detected = self.process_frame(frame, current_time)
                 percentage = 0
-                if self.display:
-                    cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 75), scale=1, thickness=2, offset=5)
+                cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 75), scale=1, thickness=2, offset=5)
                 self.check_conditions(percentage, overlap_detected, current_time, frame_resized)
-                if self.display:
-                    cv2.imshow(window_name, frame_resized)
-                    processing_time = (time.time() - start_time) * 1000
-                    adjusted_delay = max(int(frame_delay - processing_time), 1)
-                    key = cv2.waitKey(adjusted_delay) & 0xFF
-                    if key == ord("n"):
-                        break
-                else:
-                    time.sleep(0.01)
+                cv2.imshow(window_name, frame_resized)
+                processing_time = (time.time() - start_time) * 1000
+                adjusted_delay = max(int(frame_delay - processing_time), 1)
+                key = cv2.waitKey(adjusted_delay) & 0xFF
+                if key == ord("n"):
+                    break
             cap.release()
-            if self.display:
-                cv2.destroyAllWindows()
+            cv2.destroyAllWindows()
         else:
             self.frame_thread = threading.Thread(target=self.frame_capture)
             self.frame_thread.daemon = True
@@ -326,28 +316,22 @@ class ConesDetector:
                 self.prev_frame_time = current_time
                 frame_resized, overlap_detected = self.process_frame(frame, current_time)
                 percentage = 0
-                if self.display:
-                    cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 75), scale=1, thickness=2, offset=5)
+                cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 75), scale=1, thickness=2, offset=5)
                 self.check_conditions(percentage, overlap_detected, current_time, frame_resized)
-                if self.display:
-                    cv2.imshow(window_name, frame_resized)
-                    key = cv2.waitKey(1) & 0xFF
-                    if key == ord("n"):
-                        self.stop_event.set()
-                        break
-                else:
-                    time.sleep(0.01)
-            if self.display:
-                cv2.destroyAllWindows()
+                cv2.imshow(window_name, frame_resized)
+                key = cv2.waitKey(1) & 0xFF
+                if key == ord("n"):
+                    self.stop_event.set()
+                    break
+            cv2.destroyAllWindows()
             self.frame_thread.join()
 
 
-def run_broom(camera_name, window_size=(320, 240), video_source=None, display=True):
+def run_broom(camera_name, window_size=(320, 240), video_source=None):
     detector = ConesDetector(
         camera_name=camera_name,
         video_source=video_source,
         window_size=window_size,
-        display=display,
     )
     detector.main()
 
@@ -356,6 +340,5 @@ if __name__ == "__main__":
     run_broom(
         camera_name="CUTTING8",
         video_source=r"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\videos\cones.mp4",
-        display=True,
         window_size=(640, 480),
     )
