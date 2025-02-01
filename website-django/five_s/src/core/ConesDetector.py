@@ -205,78 +205,81 @@ class ConesDetector:
 
         return frame_resized, overlap_detected
 
-    def check_conditions(self, percentage, overlap_detected, current_time, frame_resized):
-        pass
 
     def main(self):
-        process_every_n_frames = 2
+        state = ""
+        skip_frames = 2
         frame_count = 0
-        window_name = f"BROOM : {self.camera_name}"
+        window_name = f"CND:{self.camera_name}"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-        cv2.resizeWindow(window_name, self.window_width, self.window_height)
-        if self.is_local_file:
-            cap = cv2.VideoCapture(self.video_source)
-            frame_delay = int(1000 / self.video_fps)
-            while cap.isOpened():
-                start_time = time.time()
-                ret, frame = cap.read()
-                if not ret:
-                    print(f"B`{self.camera_name} : End of video file or cannot read the frame. Restarting...")
-                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                    continue
-                frame_count += 1
-                if frame_count % process_every_n_frames != 0:
-                    continue
-                current_time = time.time()
-                time_diff = current_time - self.prev_frame_time
-                self.fps = 1 / time_diff if time_diff > 0 else 0
-                self.prev_frame_time = current_time
-                frame_resized, overlap_detected = self.process_frame(frame, current_time)
-                percentage = 0
-                cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 75), scale=1, thickness=2, offset=5)
-                self.check_conditions(percentage, overlap_detected, current_time, frame_resized)
-                cv2.imshow(window_name, frame_resized)
-                processing_time = (time.time() - start_time) * 1000
-                adjusted_delay = max(int(frame_delay - processing_time), 1)
-                key = cv2.waitKey(adjusted_delay) & 0xFF
-                if key == ord("n"):
-                    break
-            cap.release()
-            cv2.destroyAllWindows()
-        else:
-            self.frame_thread = threading.Thread(target=self.frame_capture)
-            self.frame_thread.daemon = True
-            self.frame_thread.start()
-            while True:
-                if self.stop_event.is_set():
-                    break
-                try:
-                    frame = self.frame_queue.get(timeout=5)
-                except queue.Empty:
-                    continue
-                frame_count += 1
-                if frame_count % process_every_n_frames != 0:
-                    continue
-                current_time = time.time()
-                time_diff = current_time - self.prev_frame_time
-                self.fps = 1 / time_diff if time_diff > 0 else 0
-                self.prev_frame_time = current_time
-                frame_resized, overlap_detected = self.process_frame(frame, current_time)
-                percentage = 0
-                cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 75), scale=1, thickness=2, offset=5)
-                self.check_conditions(percentage, overlap_detected, current_time, frame_resized)
-                cv2.imshow(window_name, frame_resized)
-                key = cv2.waitKey(1) & 0xFF
-                if key == ord("n"):
-                    self.stop_event.set()
-                    break
-            cv2.destroyAllWindows()
-            self.frame_thread.join()
+        cv2.resizeWindow(window_name, self.window_size)
+        final_overlap = 0
+
+        try:
+            if self.video_fps is None:
+                self.frame_queue = queue.Queue(maxsize=10)
+                self.frame_thread = threading.Thread(target=self.capture_frame, daemon=True)
+                self.frame_thread.start()
+
+                while not self.stop_event.is_set():
+                    try:
+                        frame = self.frame_queue.get(timeout=1)
+                    except queue.Empty:
+                        continue
+                    frame_count += 1
+                    if frame_count % skip_frames != 0:
+                        continue
+                    current_time = time.time()
+                    time_diff = current_time - self.prev_frame_time
+                    self.fps = 1 / time_diff if time_diff > 0 else 0
+                    self.prev_frame_time = current_time
+                    frame_resized, final_overlap = self.process_frame(frame, current_time)
+                    cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
+                    cv2.imshow(window_name, frame_resized)
+                    key = cv2.waitKey(1) & 0xFF
+                    if key == ord("n") or key == ord("N"):
+                        print("Manual stop detected.")
+                        self.stop_event.set()
+                        break
+
+                cv2.destroyAllWindows()
+                if self.frame_thread.is_alive():
+                    self.frame_thread.join()
+            else:
+                cap = cv2.VideoCapture(self.video_source)
+                frame_delay = int(1000 / self.video_fps)
+                while cap.isOpened() and not self.stop_event.is_set():
+                    start_time = time.time()
+                    ret, frame = cap.read()
+                    if not ret:
+                        print("Video ended.")
+                        break
+                    frame_count += 1
+                    if frame_count % skip_frames != 0:
+                        continue
+                    current_time = time.time()
+                    time_diff = current_time - self.prev_frame_time
+                    self.fps = 1 / time_diff if time_diff > 0 else 0
+                    self.prev_frame_time = current_time
+                    frame_resized, final_overlap = self.process_frame(frame, current_time)
+                    cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
+                    cv2.imshow(window_name, frame_resized)
+                    processing_time = (time.time() - start_time) * 1000
+                    adjusted_delay = max(int(frame_delay - processing_time), 1)
+                    key = cv2.waitKey(adjusted_delay) & 0xFF
+                    if key == ord("n") or key == ord("N"):
+                        print("Manual stop detected.")
+                        self.stop_event.set()
+                        break
+                cap.release()
+                cv2.destroyAllWindows()
+        finally:
+            print("CND is stopped.")
 
 
 if __name__ == "__main__":
     cnd = ConesDetector(
-        camera_name="CUTTING8",
+        camera_name="CUTTING4",
         video_source=r"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\videos\cones.mp4",
         is_insert=False,
     )
