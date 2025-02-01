@@ -1,7 +1,10 @@
-import os, cv2, torch, cvzone, time, threading, queue, math, numpy as np, pymysql, json
+import os, cv2, torch, cvzone, time, threading, queue, math, numpy as np, pymysql, json, sys
 from shapely.geometry import Polygon
 from ultralytics import YOLO
 from datetime import datetime
+
+sys.path.append(r"\\10.5.0.3\VISUALAI\website-django\five_s\src")
+from libs.DataHandler import DataHandler
 
 
 class ConesDetector:
@@ -15,7 +18,7 @@ class ConesDetector:
         self.window_size = window_size
         self.process_size = (640, 640)
         self.rois, self.ip_camera = self.camera_config()
-        self.choose_video_source()
+        # self.choose_video_source()
         self.prev_frame_time = 0
         self.model = YOLO("D:/NWR/run/kon/version2/weights/best.pt").to("cuda")
         self.model.overrides["verbose"] = False
@@ -74,21 +77,45 @@ class ConesDetector:
                     scaled_rois.append(polygon)
         return scaled_rois, ip
 
-    def choose_video_source(self):
-        pass
+    def draw_rois(self, frame):
+        if not self.rois:
+            return
+        for roi in self.rois:
+            if roi.geom_type != "Polygon":
+                continue
+            pts = np.array(roi.exterior.coords, np.int32)
+            pts = pts.reshape((-1, 1, 2))
+            cv2.polylines(frame, [pts], True, (0, 255, 0), 2)
 
-    def frame_capture(self):
+    def choose_video_source(self):
+        if self.video_source is None:
+            self.frame_queue = queue.Queue(maxsize=10)
+            self.frame_thread = None
+            self.video_fps = None
+            self.is_local_video = False
+            self.video_source = f"rtsp://admin:oracle2015@{self.ip_camera}:554/Streaming/Channels/1"
+        else:
+            if os.path.isfile(self.video_source):
+                self.is_local_video = True
+                cap = cv2.VideoCapture(self.video_source)
+                self.video_fps = cap.get(cv2.CAP_PROP_FPS)
+                if not self.video_fps or math.isnan(self.video_fps):
+                    self.video_fps = 25
+                cap.release()
+            else:
+                self.is_local_video = False
+                self.video_fps = None
+
+    def capture_frame(self):
         while not self.stop_event.is_set():
             cap = cv2.VideoCapture(self.video_source)
             if not cap.isOpened():
-                print(f"B`{self.camera_name} : Failed to open stream. Retrying in 5 seconds...")
                 cap.release()
                 time.sleep(5)
                 continue
             while not self.stop_event.is_set():
                 ret, frame = cap.read()
                 if not ret:
-                    print(f"B`{self.camera_name} : Failed to read frame. Reconnecting in 5 seconds...")
                     cap.release()
                     time.sleep(5)
                     break
@@ -98,13 +125,9 @@ class ConesDetector:
                     pass
             cap.release()
 
-    def process_model(self, frame):
-        # conf=0 karena user minta confidence 0
+    def export_frame_segment(self, frame):
         with torch.no_grad():
-            results = self.model.predict(frame, conf=0.5)
-        return results
-
-    def export_frame(self, results):
+            results = self.model.predict(frame, stream=True, imgsz=self.process_size[0], task="segmentation")
         boxes_info = []
         overlap_detected = False
         for result in results:
@@ -137,9 +160,9 @@ class ConesDetector:
         return boxes_info, overlap_detected
 
     def process_frame(self, frame, current_time):
-        frame_resized = cv2.resize(frame, (self.new_width, self.new_height))
-        results = self.process_model(frame_resized)
-        boxes_info, overlap_detected = self.export_frame(results)
+        frame_resized = cv2.resize(frame, self.process_size)
+        self.draw_rois(frame_resized)
+        boxes_info, overlap_detected = self.export_frame_segment(frame_resized)
 
         any_inside = any(bi[1] for bi in boxes_info)
         if any_inside:
@@ -155,28 +178,20 @@ class ConesDetector:
         if overlap_detected and self.timestamp_start is None:
             self.timestamp_start = datetime.now()
 
-        self.draw_borders(frame_resized)
-
-        # Buat overlay untuk menggambar polygon dengan warna solid
         overlay = frame_resized.copy()
 
         for poly_xy, inside, (cx, cy) in boxes_info:
             pts = np.array(poly_xy, np.int32).reshape((-1, 1, 2))
             if inside:
-                # Violation
                 cv2.fillPoly(overlay, [pts], (0, 70, 255))
             else:
-                # Warning
                 cv2.fillPoly(overlay, [pts], (0, 255, 255))
 
-        # Campurkan overlay dengan frame_resized dengan transparansi 50%
         alpha = 0.5
         cv2.addWeighted(overlay, alpha, frame_resized, 1 - alpha, 0, frame_resized)
 
-        # Setelah transparansi diaplikasikan, baru tulis teks di atasnya
         for poly_xy, inside, (cx, cy) in boxes_info:
             if inside:
-                # Hitung waktu violation
                 if self.violation_start_time is not None:
                     elapsed = current_time - self.violation_start_time
                     hh = int(elapsed // 3600)
@@ -190,76 +205,8 @@ class ConesDetector:
 
         return frame_resized, overlap_detected
 
-    def draw_borders(self, frame):
-        if not self.borders:
-            return
-        for border_polygon in self.borders:
-            if border_polygon.geom_type != "Polygon":
-                continue
-            pts = np.array(border_polygon.exterior.coords, np.int32)
-            pts = pts.reshape((-1, 1, 2))
-            cv2.polylines(frame, [pts], isClosed=True, color=(0, 255, 255), thickness=2)
-
-    def box_to_polygon(self, x1, y1, x2, y2):
-        from shapely.geometry import box
-
-        return box(x1, y1, x2, y2)
-
     def check_conditions(self, percentage, overlap_detected, current_time, frame_resized):
         pass
-
-    def capture_and_send(self, frame_resized, percentage, current_time):
-        cvzone.putTextRect(frame_resized, f"Overlap: {percentage:.2f}%", (10, 50), scale=1, thickness=2, offset=5)
-        cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 75), scale=1, thickness=2, offset=5)
-        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        image_path = f"images/cleaned_area_{self.camera_name}_{timestamp_str}.jpg"
-        os.makedirs(os.path.dirname(image_path), exist_ok=True)
-        cv2.imwrite(image_path, frame_resized)
-        self.send_to_server(percentage, image_path, self.timestamp_start)
-        self.timestamp_start = None
-
-    def send_to_server(self, percentage, image_path, timestamp_start, host="10.5.0.2"):
-        def server_address(host):
-            if host == "localhost":
-                user = "root"
-                password = "robot123"
-                database = "report_ai_cctv"
-                port = 3306
-            elif host == "10.5.0.2":
-                user = "robot"
-                password = "robot123"
-                database = "report_ai_cctv"
-                port = 3307
-            else:
-                raise ValueError(f"Invalid host: {host}")
-            return user, password, database, port
-
-        try:
-            user, password, database, port = server_address(host)
-            connection = pymysql.connect(host=host, user=user, password=password, database=database, port=port)
-            cursor = connection.cursor()
-            table = "empbro"
-            category = "Menyapu Lantai"
-            camera_name = self.camera_name
-            timestamp_done = datetime.now()
-            timestamp_done_str = timestamp_done.strftime("%Y-%m-%d %H:%M:%S")
-            timestamp_start_str = timestamp_start.strftime("%Y-%m-%d %H:%M:%S") if timestamp_start else None
-            with open(image_path, "rb") as file:
-                binary_image = file.read()
-            query = f"""
-            INSERT INTO {table} (cam, category, timestamp_start, timestamp_done, percentage, image_done)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            """
-            cursor.execute(query, (camera_name, category, timestamp_start_str, timestamp_done_str, percentage, binary_image))
-            connection.commit()
-            print(f"B`{self.camera_name} : Broom data successfully sent to server.")
-        except pymysql.MySQLError as e:
-            print(f"B`{self.camera_name} : Error sending broom data to server: {e}")
-        finally:
-            if "cursor" in locals():
-                cursor.close()
-            if "connection" in locals():
-                connection.close()
 
     def main(self):
         process_every_n_frames = 2
@@ -327,18 +274,10 @@ class ConesDetector:
             self.frame_thread.join()
 
 
-def run_broom(camera_name, window_size=(320, 240), video_source=None):
-    detector = ConesDetector(
-        camera_name=camera_name,
-        video_source=video_source,
-        window_size=window_size,
-    )
-    detector.main()
-
-
 if __name__ == "__main__":
-    run_broom(
+    cnd = ConesDetector(
         camera_name="CUTTING8",
         video_source=r"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\videos\cones.mp4",
-        window_size=(640, 480),
+        is_insert=False,
     )
+    cnd.main()
