@@ -18,7 +18,7 @@ class SpreadingManual:
         self.choose_video_source()
         self.prev_frame_time = 0
 
-        self.model = YOLO(r"C:\xampp\htdocs\VISUALAI\website-django\static\resources\models\spreading\weights\best.pt").to("cuda")
+        self.model = YOLO(r"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\resources\models\spreading\weights\best.pt").to("cuda")
         self.model.overrides["verbose"] = False
 
         self.trail_map_polygon = Polygon()
@@ -41,7 +41,7 @@ class SpreadingManual:
         self.lock = threading.Lock()
 
     def camera_config(self):
-        with open(r"C:\xampp\htdocs\VISUALAI\website-django\static\resources\conf\camera_config.json", "r") as f:
+        with open(r"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\resources\conf\camera_config.json", "r") as f:
             config = json.load(f)
         ip = config[self.camera_name]["ip"]
         scaled_rois = []
@@ -236,7 +236,7 @@ class SpreadingManual:
 if __name__ == "__main__":
     sm = SpreadingManual(
         camera_name="CUTTING3",
-        video_source=r"C:\xampp\htdocs\VISUALAI\website-django\static\videos\spreading_manual.mp4",
+        video_source=r"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\videos\spreading_manual.mp4",
         window_size=(960, 540),
     )
     sm.main()

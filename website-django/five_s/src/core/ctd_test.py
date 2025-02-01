@@ -13,7 +13,7 @@ class ContopDetector:
         self.ip_camera = self.camera_config()
         self.choose_video_source()
         self.prev_frame_time = 0
-        self.model = YOLO("website-django/static/resources/models/ctd2l.pt").to("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = YOLO("website-django/five_s/static/resources/models/ctd2l.pt").to("cuda" if torch.cuda.is_available() else "cpu")
         self.model.overrides["verbose"] = False
         self.lock = threading.Lock()
         self.stop_event = threading.Event()
@@ -24,7 +24,7 @@ class ContopDetector:
         self.duration = 0
 
     def camera_config(self):
-        with open(r"C:\xampp\htdocs\VISUALAI\website-django\static\resources\conf\camera_config.json", "r") as f:
+        with open(r"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\resources\conf\camera_config.json", "r") as f:
             config = json.load(f)
         ip = config[self.camera_name]["ip"]
         return ip

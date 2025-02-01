@@ -20,9 +20,9 @@ class BroCarpDetector:
         self.rois, self.ip_camera = self.camera_config()
         self.choose_video_source()
         self.prev_frame_time = 0
-        self.model_broom = YOLO(r"\\10.5.0.3\VISUALAI\website-django\static\resources\models\bd6l.pt").to("cuda")
+        self.model_broom = YOLO(r"\\10.5.0.3\VISUALAI\website-django\five_s\static\resources\models\bd6l.pt").to("cuda")
         self.model_broom.overrides["verbose"] = False
-        self.model_carpal = YOLO(r"\\10.5.0.3\VISUALAI\website-django\static\resources\models\yolo11l-pose.pt").to("cuda")
+        self.model_carpal = YOLO(r"\\10.5.0.3\VISUALAI\website-django\five_s\static\resources\models\yolo11l-pose.pt").to("cuda")
         self.model_carpal.overrides["verbose"] = False
 
         if len(self.rois) > 1:
@@ -43,7 +43,7 @@ class BroCarpDetector:
         self.is_insert = is_insert
 
     def camera_config(self):
-        with open(r"\\10.5.0.3\VISUALAI\website-django\static\resources\conf\camera_config.json", "r") as f:
+        with open(r"\\10.5.0.3\VISUALAI\website-django\five_s\static\resources\conf\camera_config.json", "r") as f:
             config = json.load(f)
         ip = config[self.camera_name]["ip"]
         scaled_rois = []

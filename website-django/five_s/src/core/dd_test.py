@@ -326,7 +326,7 @@ class DifferenceDetector:
         return (tx, ty)
 
     def camera_config():
-        with open(r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf\camera_config.json", "r") as f:
+        with open(r"C:\xampp\htdocs\VISUALAI\website\five_s\static\resources\conf\camera_config.json", "r") as f:
             config = json.load(f)
         office_key = "CUTTING8"
         reference_filename = config[office_key]["dd_reference"]
