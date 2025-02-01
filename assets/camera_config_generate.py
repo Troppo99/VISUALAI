@@ -60,7 +60,7 @@ BASE_CONF_PATH = "//10.5.0.3/VISUALAI/website-django/static/resources/conf"
 BASE_IMAGE_PATH = "//10.5.0.3/VISUALAI/website-django/static/images/dd_reference"
 
 # Step 3: Define the ROI categories and their corresponding subdirectories
-roi_categories = {"bd_rois": "bd_rois", "cd_rois": "cd_rois", "bcd_rois": "bcd_rois", "dd_rois": "dd_rois", "sm_rois": "sm_rois"}
+roi_categories = {"bd_rois": "bd_rois", "cd_rois": "cd_rois", "bcd_rois": "bcd_rois", "cnd_rois": "cnd_rois", "dd_rois": "dd_rois", "sm_rois": "sm_rois"}
 
 # Step 4: Generate the configuration for each camera
 camera_config = {}
