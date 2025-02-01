@@ -235,7 +235,7 @@ class SpreadingManual:
 
 if __name__ == "__main__":
     sm = SpreadingManual(
-        camera_name="CUTTING3",
+        camera_name="CUTTING4",
         video_source=r"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\videos\spreading_manual.mp4",
         window_size=(960, 540),
     )
