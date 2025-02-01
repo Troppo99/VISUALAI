@@ -1,35 +1,39 @@
-import os, cv2, torch, cvzone, time, threading, queue, math, numpy as np, pymysql
+import os, cv2, torch, cvzone, time, threading, queue, math, numpy as np, pymysql, json
 from shapely.geometry import Polygon
 from ultralytics import YOLO
 from datetime import datetime
 
 
-class BroomDetector:
-    def __init__(
-        self,
-        BROOM_CONFIDENCE_THRESHOLD=0.0,  # set confidence 0
-        rtsp_url=None,
-        camera_name=None,
-        window_size=(540, 360),
-        display=True,
-    ):
-        self.BROOM_CONFIDENCE_THRESHOLD = BROOM_CONFIDENCE_THRESHOLD
+class ConesDetector:
+    def __init__(self, confidence_threshold=0.0, video_source=None, camera_name=None, window_size=(320, 240), stop_event=None, is_insert=False, display=True):
+        self.stop_event = stop_event
+        if self.stop_event is None:
+            self.stop_event = threading.Event()
+        self.confidence_threshold = confidence_threshold
+        self.video_source = video_source
+        self.camera_name = camera_name
+        self.window_size = window_size
+        self.process_size = (640, 640)
+        self.rois, self.ip_camera = self.camera_config()
+        self.choose_video_source()
+        self.prev_frame_time = 0
+        self.model = YOLO("D:/NWR/run/kon/version2/weights/best.pt").to("cuda")
+        self.model.overrides["verbose"] = False
+
         self.window_width, self.window_height = window_size
         self.new_width, self.new_height = (960, 540)
-        self.prev_frame_time = 0
         self.fps = 0
-        self.camera_name = camera_name
         self.borders, self.ip_camera = self.camera_config()
         self.display = display
         if not self.display:
             print(f"B`{self.camera_name} : >>>Display is disabled!<<<")
 
         self.is_local_file = False
-        if rtsp_url is not None:
-            self.rtsp_url = rtsp_url
-            if os.path.isfile(rtsp_url):
+        if video_source is not None:
+            self.video_source = video_source
+            if os.path.isfile(video_source):
                 self.is_local_file = True
-                cap = cv2.VideoCapture(self.rtsp_url)
+                cap = cv2.VideoCapture(self.video_source)
                 self.video_fps = cap.get(cv2.CAP_PROP_FPS)
                 if not self.video_fps or math.isnan(self.video_fps):
                     self.video_fps = 25
@@ -37,10 +41,10 @@ class BroomDetector:
                 print(f"B`{self.camera_name} : Local video file detected. FPS: {self.video_fps}")
             else:
                 self.is_local_file = False
-                print(f"B`{self.camera_name} : RTSP stream detected. URL: {self.rtsp_url}")
+                print(f"B`{self.camera_name} : RTSP stream detected. URL: {self.video_source}")
                 self.video_fps = None
         else:
-            self.rtsp_url = f"rtsp://admin:oracle2015@{self.ip_camera}:554/Streaming/Channels/1"
+            self.video_source = f"rtsp://admin:oracle2015@{self.ip_camera}:554/Streaming/Channels/1"
             self.video_fps = None
             self.is_local_file = False
 
@@ -48,45 +52,37 @@ class BroomDetector:
         self.stop_event = threading.Event()
         self.frame_thread = None
 
-        # Gunakan model last.pt sesuai permintaan
-        self.broom_model = YOLO("D:/NWR/run/kon/version2/weights/best.pt").to("cuda")
-        self.broom_model.overrides["verbose"] = False
-        print(f"Model Broom device: {next(self.broom_model.model.parameters()).device}")
-
         self.no_detection_duration = 3
         self.violation_start_time = None
         self.last_detected_time = None
         self.timestamp_start = None
 
     def camera_config(self):
-        config = {
-            "CUTTING8": {
-                "borders": [],
-                # "borders": [[(46, 256), (136, 224), (581, 295), (1109, 398), (1275, 436), (1275, 719), (989, 719), (682, 613), (437, 499), (238, 385), (111, 306)]],
-                # "borders": [[(26, 117), (136, 82), (480, 154), (763, 235), (1052, 346), (1278, 450), (1277, 716), (796, 715), (480, 529), (255, 346), (320, 329), (150, 212), (26, 117)]],
-                "ip": "172.16.0.137",
-            },
-        }
-        if self.camera_name not in config:
-            return [], None
-        original_borders = config[self.camera_name]["borders"]
+        with open(r"\\10.5.0.3\VISUALAI\website-django\five_s\static\resources\conf\camera_config.json", "r") as f:
+            config = json.load(f)
         ip = config[self.camera_name]["ip"]
-        scaled_borders = []
-        for border_group in original_borders:
+        scaled_rois = []
+        rois_path = config[self.camera_name]["cnd_rois"]
+        with open(rois_path, "r") as rois_file:
+            original_rois = json.load(rois_file)
+        for roi_group in original_rois:
             scaled_group = []
-            for x, y in border_group:
+            for x, y in roi_group:
                 scaled_x = int(x * (960 / 1280))
                 scaled_y = int(y * (540 / 720))
                 scaled_group.append((scaled_x, scaled_y))
             if len(scaled_group) >= 3:
                 polygon = Polygon(scaled_group)
                 if polygon.is_valid:
-                    scaled_borders.append(polygon)
-        return scaled_borders, ip
+                    scaled_rois.append(polygon)
+        return scaled_rois, ip
+
+    def choose_video_source(self):
+        pass
 
     def frame_capture(self):
         while not self.stop_event.is_set():
-            cap = cv2.VideoCapture(self.rtsp_url)
+            cap = cv2.VideoCapture(self.video_source)
             if not cap.isOpened():
                 print(f"B`{self.camera_name} : Failed to open stream. Retrying in 5 seconds...")
                 cap.release()
@@ -108,7 +104,7 @@ class BroomDetector:
     def process_model(self, frame):
         # conf=0 karena user minta confidence 0
         with torch.no_grad():
-            results = self.broom_model.predict(frame, conf=0.5)
+            results = self.model.predict(frame, conf=0.5)
         return results
 
     def export_frame(self, results):
@@ -277,7 +273,7 @@ class BroomDetector:
             cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
             cv2.resizeWindow(window_name, self.window_width, self.window_height)
         if self.is_local_file:
-            cap = cv2.VideoCapture(self.rtsp_url)
+            cap = cv2.VideoCapture(self.video_source)
             frame_delay = int(1000 / self.video_fps)
             while cap.isOpened():
                 start_time = time.time()
@@ -346,10 +342,10 @@ class BroomDetector:
             self.frame_thread.join()
 
 
-def run_broom(camera_name, window_size=(320, 240), rtsp_url=None, display=True):
-    detector = BroomDetector(
+def run_broom(camera_name, window_size=(320, 240), video_source=None, display=True):
+    detector = ConesDetector(
         camera_name=camera_name,
-        rtsp_url=rtsp_url,
+        video_source=video_source,
         window_size=window_size,
         display=display,
     )
@@ -359,7 +355,7 @@ def run_broom(camera_name, window_size=(320, 240), rtsp_url=None, display=True):
 if __name__ == "__main__":
     run_broom(
         camera_name="CUTTING8",
-        rtsp_url=r"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\videos\cones.mp4",
+        video_source=r"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\videos\cones.mp4",
         display=True,
         window_size=(640, 480),
     )
