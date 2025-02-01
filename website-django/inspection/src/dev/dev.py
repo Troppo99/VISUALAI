@@ -75,8 +75,8 @@ def display_results(original, blurred, edges_canny, sobelx, sobely, magnitude, l
 
 
 def main():
-    script_dir = Path(__file__).resolve().parent
-    image_dir = os.path.join(script_dir, "img")
+    script_dir = Path(__file__).resolve().parent.parent.parent
+    image_dir = os.path.join(script_dir, "static/images/test")
     image_path = os.path.join(image_dir,"img1.jpg")
     original = load_image(image_path)
     gray = cv2.cvtColor(original, cv2.COLOR_BGR2GRAY)
