@@ -8,13 +8,13 @@ class CameraPlay:
         self.all_camera = [
             "BUFFER1",
             "CUTTING1",
+            "CUTTING10",
             "CUTTING2",
             "CUTTING3",
             "CUTTING4",
             "CUTTING5",
             "CUTTING8",
             "CUTTING9",
-            "CUTTING10",
             "EXPEDISI1",
             "FOLDING1",
             "FOLDING2",
@@ -36,9 +36,9 @@ class CameraPlay:
             "LINEMANUAL14",
             "LINEMANUAL15",
             "METALDET1",
-            # "OFFICE1",
-            # "OFFICE2",
-            # "OFFICE3",
+            "OFFICE1",
+            "OFFICE2",
+            "OFFICE3",
             "SEWING1",
             "SEWING2",
             "SEWING3",
@@ -49,7 +49,7 @@ class CameraPlay:
             "SEWINGBACK1",
             "SEWINGBACK2",
             "SEWINGOFFICE",
-        ],
+        ]
 
         self.pcs = [
             "PC-100",

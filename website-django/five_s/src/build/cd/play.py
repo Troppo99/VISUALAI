@@ -9,9 +9,9 @@ class CameraPlay:
             "HALAMANDEPAN1",
             "CUTTING5",
             "SEWINGOFFICE",
-            # "OFFICE1",
-            # "OFFICE2",
-            # "OFFICE3",
+            "OFFICE1",
+            "OFFICE2",
+            "OFFICE3",
         ]
 
         self.pcs = [
