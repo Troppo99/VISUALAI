@@ -21,7 +21,7 @@ class YoloInference:
         self.yolo_task = YoloTask(self.model_detect, self.confidence_threshold, self.process_size)
 
     def camera_config(self):
-        with open(r"C:\xampp\htdocs\VISUALAI\website-django\static\resources\conf\camera_config.json", "r") as f:
+        with open(r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\resources\conf\camera_config.json", "r") as f:
             config = json.load(f)
         ip = config[self.camera_name]["ip"]
         return f"rtsp://admin:oracle2015@{ip}:554/Streaming/Channels/1"
@@ -181,6 +181,7 @@ class YoloTask:
 if __name__ == "__main__":
     yi = YoloInference(
         camera_name="ROBOTICS",
-        video_source=r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\videos\test3.mp4",
+        # video_source=r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\videos\test3.mp4",
+        video_source=1,
     )
     yi.main()
