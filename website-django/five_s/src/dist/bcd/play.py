@@ -6,18 +6,44 @@ from pathlib import Path
 class CameraPlay:
     def __init__(self):
         self.all_camera = [
-            "HALAMANDEPAN1",
+            "BUFFER1",
+            "CUTTING1",
+            "CUTTING10",
+            "CUTTING2",
+            "CUTTING4",
+            "CUTTING5",
+            "CUTTING8",
+            "CUTTING9",
             "EKSPEDISI1",
-            "GUDANGACC1",
-            "GUDANGACC2",
             "FOLDING1",
             "FOLDING2",
             "FOLDING3",
-            "METALDET1",
-            "FREEMETAL1",
             "FREEMETAL2",
-            "CUTTING3",
-            "CUTTING2",
+            "GUDANGACC2",
+            "GUDANGACC3",
+            "GUDANGKAIN1",
+            "GUDANGKAIN2",
+            "GUDANGKAIN3",
+            "GUDANGKAIN4",
+            "GUDANGKAIN5",
+            "HALAMANDEPAN1",
+            "INNERBOX1",
+            "KANTIN2",
+            "LINEMANUAL10",
+            "LINEMANUAL14",
+            "LINEMANUAL15",
+            "METALDET1",
+            "OFFICE1",
+            "SEWING1",
+            "SEWING2",
+            "SEWING3",
+            "SEWING4",
+            "SEWING5",
+            "SEWING6",
+            "SEWING7",
+            "SEWINGBACK1",
+            "SEWINGBACK2",
+            "SEWINGOFFICE",
         ]
 
         self.pcs = [
@@ -120,7 +146,7 @@ except KeyboardInterrupt:
     def create_and_run_scripts(self):
         for cam in self.camera_list:
             python_executable = self.cwd / ".venv" / "Scripts" / "python.exe"
-            script_path = self.script_dir / f"build/run-{cam}.py"
+            script_path = self.script_dir / f"cache/run-{cam}.py"
 
             if not python_executable.exists():
                 print(f"Python executable not found: {python_executable}")
