@@ -15,7 +15,7 @@ class CameraPlay:
             "CUTTING5",
             "CUTTING8",
             "CUTTING9",
-            "EXPEDISI1",
+            "EKSPEDISI1",
             "FOLDING1",
             "FOLDING2",
             "FOLDING3",

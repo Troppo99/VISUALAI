@@ -8,11 +8,11 @@ def make_dir(path):
 
 
 print(40 * "- ")
-video_path = r"C:\xampp\htdocs\VISUALAI\qc-project\videos\labeling\defect\defect1.mp4"
+video_path = r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\images\labeling\videos\stitches.mp4"
 
 cap = cv2.VideoCapture(video_path)
 
-base_output_dir = fr"C:\xampp\htdocs\VISUALAI\qc-project\images\labeling\defect1"
+base_output_dir = rf"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\images\labeling\stitches"
 make_dir(base_output_dir)
 
 total_frames = 200
