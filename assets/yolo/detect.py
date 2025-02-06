@@ -1,8 +1,12 @@
 import cv2
 from ultralytics import YOLO
 
-model = YOLO(r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\models\defect2l.pt")
-cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+model = YOLO(r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\resources\models\defect3-seg-493\weights\best.pt")
+cap = cv2.VideoCapture(
+    # r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\videos\test2.mp4",
+    0,
+    cv2.CAP_DSHOW,
+)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
@@ -12,7 +16,7 @@ while True:
         print("Frame not captured. Check your camera index or driver.")
         break
     frame = cv2.resize(frame, (1280, 1280))
-    results = model(frame, imgsz=1280)
+    results = model(frame, imgsz=960)
     for r in results:
         for b in r.boxes:
             x1, y1, x2, y2 = map(int, b.xyxy[0])
@@ -24,7 +28,7 @@ while True:
                 cv2.putText(frame, f"{cls_name} {conf:.2f}", (x1, max(0, y2 + 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
     frame = cv2.resize(frame, (1280, 720))
     cv2.imshow("Webcam Inference", frame)
-    if cv2.waitKey(1) & 0xFF == 27:  # ESC
+    if cv2.waitKey(1) & 0xFF == ord("n"):  # ESC
         break
 
 cap.release()
