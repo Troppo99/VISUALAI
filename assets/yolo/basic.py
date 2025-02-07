@@ -82,8 +82,9 @@ class YoloInference:
             return cv2.addWeighted(overlay, 0.5, output_frame, 0.5, 0)
         elif self.where_task == "segment":
             return self.yolo_task.export_frame_segment(frame_resized)
-        else:
-            return frame_resized
+        elif self.where_task == "classify":
+            return self.yolo_task.export_frame_classify(frame_resized)
+        return frame_resized
 
     def main(self):
         skip_frames = 2
@@ -194,7 +195,29 @@ class YoloTask:
         return cv2.addWeighted(overlay, 0.5, frame, 0.5, 0)
 
     def export_frame_classify(self, frame):
-        pass
+        with torch.no_grad():
+            results = self.model(frame, stream=True, imgsz=self.process_size[0])
+
+        overlay = frame.copy()
+        best_label, best_conf = None, 0.0
+
+        for r in results:
+            p = getattr(r, "probs", None)
+            if p is not None:
+                if hasattr(p, "top1") and hasattr(p, "top1conf"):
+                    idx = int(p.top1)
+                    conf = float(p.top1conf)
+                else:
+                    idx = int(p.argmax())
+                    conf = float(p[idx])
+
+                if conf > best_conf:
+                    best_conf = conf
+                    best_label = self.model.names[idx]
+
+        if best_label and best_conf > self.confidence_threshold:
+            cvzone.putTextRect(overlay, f"{best_label} {best_conf:.2f}", (500, 100), scale=3, thickness=3, offset=5)
+        return cv2.addWeighted(overlay, 0.5, frame, 0.5, 0)
 
     def export_frame_pose(self, frame):
         pass
@@ -205,10 +228,12 @@ class YoloTask:
 
 if __name__ == "__main__":
     yi = YoloInference(
-        confidence_threshold=0.75,
+        confidence_threshold=0.89,
         camera_name="ROBOTICS",
-        video_source=1,
-        where_model=r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\resources\models\defect-strip\weights\best.pt",
-        where_task="segment",
+        video_source=0,
+        # video_source=r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\images\labeling\videos\stitches.mp4",
+        # where_model=r"resources\models\yolo11l-cls.pt",
+        where_model=r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\resources\models\stitches2\weights\best.pt",
+        where_task="classify",
     )
     yi.main()
