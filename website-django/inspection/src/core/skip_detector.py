@@ -1,4 +1,4 @@
-import json, cv2, numpy as np, time, queue, cvzone, threading
+import json, cv2, numpy as np, time, queue, cvzone, threading, pymysql, datetime, io
 from shapely.geometry import Polygon, Point
 from sklearn.cluster import KMeans
 
@@ -13,6 +13,7 @@ class SkipDetector:
             self.stop_event = threading.Event()
         self.rois = self.camera_config()
         self.prev_frame_time = 0
+        self.window_name = None
 
     def camera_config(self):
         with open(r"\\10.5.0.3\VISUALAI\website-django\inspection\static\resources\conf\camera_config_inspection.json", "r") as f:
@@ -118,7 +119,10 @@ class SkipDetector:
 
     def process_frame(self, frame):
         frame_960 = cv2.resize(frame, (960, 540))
-        k_val = 5
+        if self.window_name:
+            k_val = cv2.getTrackbarPos("KSize", self.window_name)
+        else:
+            k_val = 5
         if k_val % 2 == 0:
             k_val += 1
         if k_val <= 0:
@@ -145,17 +149,26 @@ class SkipDetector:
 
         if line_breaks_in_roi:
             cvzone.putTextRect(result_frame, f"ROI : Skip Detected ({circle_in_roi_count})", (10, 65), 1, 2, offset=5, colorR=(0, 255, 255), colorT=(0, 0, 0))
+            self.insert_defect_record(circle_in_roi_count, result_frame)
         else:
             cvzone.putTextRect(result_frame, "ROI : Good", (10, 65), 1, 2, offset=5, colorR=(0, 255, 0), colorT=(0, 0, 0))
         self.draw_rois(result_frame)
+        mask_3ch = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
+        mini_blurred = cv2.resize(blurred, (224, 126))
+        mini_mask = cv2.resize(mask_3ch, (224, 126))
+        H, W = result_frame.shape[:2]
+        hMini, wMini = mini_blurred.shape[:2]
+        result_frame[H - hMini : H, 0:wMini] = mini_blurred
+        result_frame[H - hMini : H, W - wMini : W] = mini_mask
         return result_frame
 
     def main(self):
         skip_frames = 2
         frame_count = 0
-        window_name = f"BD:{self.camera_name}"
-        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-        cv2.resizeWindow(window_name, self.window_size)
+        self.window_name = f"Inspection : {self.camera_name}"
+        cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(self.window_name, self.window_size)
+        cv2.createTrackbar("KSize", self.window_name, 5, 31, lambda x: None)
         self.frame_queue = queue.Queue(maxsize=10)
         self.frame_thread = threading.Thread(target=self.capture_frame, daemon=True)
         self.frame_thread.start()
@@ -175,7 +188,7 @@ class SkipDetector:
 
             frame_processed = self.process_frame(frame)
             cvzone.putTextRect(frame_processed, f"FPS: {int(fps)}", (10, 90), 1, 2, offset=5)
-            cv2.imshow(window_name, frame_processed)
+            cv2.imshow(self.window_name, frame_processed)
             key = cv2.waitKey(1) & 0xFF
             if key == ord("n") or key == ord("N"):
                 print("Manual stop detected.")
@@ -185,6 +198,24 @@ class SkipDetector:
         cv2.destroyAllWindows()
         if self.frame_thread.is_alive():
             self.frame_thread.join()
+
+    def insert_defect_record(self, circle_in_roi_count, result_frame):
+        now = datetime.datetime.now()
+        _, buffer = cv2.imencode(".jpg", result_frame)
+        img_bytes = buffer.tobytes()
+
+        conn = pymysql.connect(host="10.5.0.2", port=3307, user="robot", password="robot123", database="visualai_db")
+        try:
+            with conn.cursor() as cursor:
+                sql = """
+                INSERT INTO inspection (timestamp, defect_type, image, pic_line, count_defect, buyer)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                """
+                data = (now, "skip", img_bytes, self.camera_name, circle_in_roi_count, "NWR")
+                cursor.execute(sql, data)
+            conn.commit()
+        finally:
+            conn.close()
 
 
 if __name__ == "__main__":
