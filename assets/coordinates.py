@@ -2,16 +2,12 @@ import cv2
 import math
 import os
 
-# Input source (RTSP link, local video file, image file)
 file_name = "SEWING1"
+# video_path = "webcam"
 video_path = "rtsp://admin:oracle2015@172.16.0.14:554/Streaming/Channels/1"
-# Contoh lainnya:
-# video_path = "rtsp://username:password@ip_address:554/Streaming/Channels/1"
-# video_path = "C:/path/to/video.mp4"
-# video_path = "C:/path/to/image.jpg"
 
-# Initialize variables for storing keypoints
-chains = []  # List to store all chains of keypoints
+
+chains = []
 dragging = False
 preview_point = None
 magnet_threshold = 10
@@ -104,37 +100,37 @@ def print_borders():
     print(f"borders = {borders}")
 
 
-# Cek apakah input adalah RTSP/URL, file video atau gambar
 is_image = False
 is_video = False
+cap_source = None
 
-if video_path.startswith("rtsp://"):
-    # Anggap sebagai RTSP stream
+if video_path.lower() == "webcam":
     is_video = True
+    cap_source = 0
+elif video_path.startswith("rtsp://"):
+    is_video = True
+    cap_source = video_path
 elif os.path.isfile(video_path):
-    # Cek ekstensi file
     ext = os.path.splitext(video_path)[1].lower()
     if ext in [".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"]:
         is_image = True
     else:
         is_video = True
+        cap_source = video_path
 else:
-    # Jika path bukan file lokal dan bukan rtsp, anggap video gagal
-    print("Error: Path is not RTSP and not a valid file.")
+    print("Error: Path is not RTSP, not a valid file, and not 'webcam'.")
     exit()
 
 cv2.namedWindow("Video")
 cv2.setMouseCallback("Video", create_keypoint)
 
 if is_image:
-    # Jika image, baca sekali
     frame = cv2.imread(video_path)
     if frame is None:
         print("Error: could not read image.")
         exit()
     frame = cv2.resize(frame, (display_width, display_height))
 
-    # Tampilkan frame dan tunggu input user
     while True:
         frame_copy = frame.copy()
         draw_chains(frame_copy)
@@ -157,8 +153,7 @@ if is_image:
             undo_last_point()
 
 else:
-    # Jika video / RTSP
-    cap = cv2.VideoCapture(video_path)
+    cap = cv2.VideoCapture(cap_source)
     if not cap.isOpened():
         print("Error: Could not open video stream.")
         exit()
@@ -166,7 +161,7 @@ else:
     while True:
         ret, frame = cap.read()
         if not ret:
-            # Jika di video file sudah habis, ulangi dari awal
+            # Jika video file habis, mulai dari frame pertama lagi
             cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
             ret, frame = cap.read()
             if not ret:
