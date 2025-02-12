@@ -61,13 +61,13 @@ class DataHandler:
                     (camera_name, args, binary_image),
                 )
             elif self.table == "violation":
-                state, warning_duration = args
+                state = args
                 self.cursor.execute(
                     f"""
-                INSERT INTO {self.table} (camera_name, state, warning_duration, image)
-                VALUES (%s, %s, %s, %s)
+                INSERT INTO {self.table} (camera_name, state, image)
+                VALUES (%s, %s, %s)
                 """,
-                    (camera_name, state, warning_duration, binary_image),
+                    (camera_name, state, binary_image),
                 )
             self.connection.commit()
         except Exception as e:

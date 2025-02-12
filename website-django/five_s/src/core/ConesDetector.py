@@ -18,7 +18,7 @@ class ConesDetector:
         self.window_size = window_size
         self.process_size = (640, 640)
         self.rois, self.ip_camera = self.camera_config()
-        # self.choose_video_source()
+
         self.prev_frame_time = 0
         self.model = YOLO("D:/NWR/run/kon/version2/weights/best.pt").to("cuda")
         self.model.overrides["verbose"] = False
@@ -28,9 +28,10 @@ class ConesDetector:
         self.fps = 0
         self.borders, self.ip_camera = self.camera_config()
 
+        # (*) Kita hapus/abaikan logika 'is_local_file' untuk ringkas (opsional)
         self.is_local_file = False
+        self.video_fps = None
         if video_source is not None:
-            self.video_source = video_source
             if os.path.isfile(video_source):
                 self.is_local_file = True
                 cap = cv2.VideoCapture(self.video_source)
@@ -38,24 +39,35 @@ class ConesDetector:
                 if not self.video_fps or math.isnan(self.video_fps):
                     self.video_fps = 25
                 cap.release()
-                print(f"B`{self.camera_name} : Local video file detected. FPS: {self.video_fps}")
-            else:
-                self.is_local_file = False
-                print(f"B`{self.camera_name} : RTSP stream detected. URL: {self.video_source}")
-                self.video_fps = None
+
         else:
+            # Default RTSP
             self.video_source = f"rtsp://admin:oracle2015@{self.ip_camera}:554/Streaming/Channels/1"
-            self.video_fps = None
-            self.is_local_file = False
+
+        # (*) PARAM TOLERANSI
+        # Jika object hilang >10 detik => reset durasi
+        self.no_detection_duration = 10
+        # Jika akumulasi durasi >=15 detik => kirim “Warning”
+        self.warning_threshold = 15
+        # Jika akumulasi durasi >=10 menit (600 detik) => “Violation”
+        self.violation_threshold = 600
+
+        # (*) Variabel akumulasi
+        self.accumulated_duration = 0.0
+        self.last_detect_time = None  # Kapan terakhir kali object terdeteksi di ROI
+
+        # (*) Flag sudah mengirim data
+        self.warning_sent = False
+        self.violation_sent = False
+
+        # Tracking status (bisa dipakai untuk keperluan tampilan)
+        self.current_state = None
+        self.violation_row_id = None
+        self.insert_done_for_today = False
+        self.last_update_date = datetime.now().date()
 
         self.frame_queue = queue.Queue(maxsize=10)
-        self.stop_event = threading.Event()
         self.frame_thread = None
-
-        self.no_detection_duration = 3
-        self.violation_start_time = None
-        self.last_detected_time = None
-        self.timestamp_start = None
 
     def camera_config(self):
         with open(r"\\10.5.0.3\VISUALAI\website-django\five_s\static\resources\conf\camera_config.json", "r") as f:
@@ -87,25 +99,6 @@ class ConesDetector:
             pts = pts.reshape((-1, 1, 2))
             cv2.polylines(frame, [pts], True, (0, 255, 0), 2)
 
-    def choose_video_source(self):
-        if self.video_source is None:
-            self.frame_queue = queue.Queue(maxsize=10)
-            self.frame_thread = None
-            self.video_fps = None
-            self.is_local_video = False
-            self.video_source = f"rtsp://admin:oracle2015@{self.ip_camera}:554/Streaming/Channels/1"
-        else:
-            if os.path.isfile(self.video_source):
-                self.is_local_video = True
-                cap = cv2.VideoCapture(self.video_source)
-                self.video_fps = cap.get(cv2.CAP_PROP_FPS)
-                if not self.video_fps or math.isnan(self.video_fps):
-                    self.video_fps = 25
-                cap.release()
-            else:
-                self.is_local_video = False
-                self.video_fps = None
-
     def capture_frame(self):
         while not self.stop_event.is_set():
             cap = cv2.VideoCapture(self.video_source)
@@ -135,11 +128,9 @@ class ConesDetector:
                 continue
             for poly_xy in result.masks.xy:
                 if len(poly_xy) < 3:
-                    # Jika titik polygon kurang dari 3, tidak dapat membentuk polygon yang valid
                     continue
                 polygon = Polygon(poly_xy)
                 if polygon.is_empty or not polygon.is_valid:
-                    # Lewati polygon kosong atau tidak valid
                     continue
                 poly_area = polygon.area
                 intersection_area_sum = 0.0
@@ -153,7 +144,6 @@ class ConesDetector:
                     inside = True
                     overlap_detected = True
 
-                # Pastikan polygon tidak kosong sebelum mengambil centroid
                 if not polygon.is_empty:
                     c = polygon.centroid
                     boxes_info.append((poly_xy, inside, (c.x, c.y)))
@@ -164,59 +154,172 @@ class ConesDetector:
         self.draw_rois(frame_resized)
         boxes_info, overlap_detected = self.export_frame_segment(frame_resized)
 
+        # (*) Apakah ada object di ROI?
         any_inside = any(bi[1] for bi in boxes_info)
+
         if any_inside:
-            self.last_detected_time = current_time
-            if self.violation_start_time is None:
-                self.violation_start_time = current_time
+            # Hitung selisih terhadap frame sebelumnya
+            if self.last_detect_time is not None:
+                # Berapa lama sejak frame sebelumnya?
+                dt = current_time - self.prev_time_for_acc
+                self.accumulated_duration += dt
+            else:
+                # Pertama kali terdeteksi (setelah lama hilang atau awal)
+                # Mulai dari 0 atau lanjutan? Tergantung jika gap < no_detection_duration
+                # tapi kita tangani di else di bawah
+                pass
+
+            # Update last_detect_time
+            self.last_detect_time = current_time
+            self.prev_time_for_acc = current_time
         else:
-            if self.last_detected_time is not None:
-                if (current_time - self.last_detected_time) > self.no_detection_duration:
-                    self.violation_start_time = None
-                    self.last_detected_time = None
+            # Tidak ada object
+            if self.last_detect_time is not None:
+                gap = current_time - self.last_detect_time
+                if gap > self.no_detection_duration:
+                    # reset akumulasi
+                    self.accumulated_duration = 0
+                    self.last_detect_time = None
+                    self.warning_sent = False
+                    self.violation_sent = False
 
-        if overlap_detected and self.timestamp_start is None:
-            self.timestamp_start = datetime.now()
+        # (*) Cek threshold
+        #  - 15 detik => kirim warning (sekali saja)
+        #  - 600 detik => violation
+        if self.accumulated_duration >= self.warning_threshold and not self.warning_sent:
+            # Kirim data "Warning"
+            self.warning_sent = True
+            self._handle_violation_state("Terjadi Warning 1-10 Menit", frame_resized, self.accumulated_duration)
 
+        if self.accumulated_duration >= self.violation_threshold and not self.violation_sent:
+            self.violation_sent = True
+            self._handle_violation_state("Terjadi Violation >10 Menit", frame_resized, self.accumulated_duration)
+
+        # Gambar poligon segmen + warna
         overlay = frame_resized.copy()
-
         for poly_xy, inside, (cx, cy) in boxes_info:
             pts = np.array(poly_xy, np.int32).reshape((-1, 1, 2))
-            if inside:
-                cv2.fillPoly(overlay, [pts], (0, 70, 255))
-            else:
-                cv2.fillPoly(overlay, [pts], (0, 255, 255))
-
+            color_fill = (0, 70, 255) if inside else (0, 255, 255)
+            cv2.fillPoly(overlay, [pts], color_fill)
         alpha = 0.5
         cv2.addWeighted(overlay, alpha, frame_resized, 1 - alpha, 0, frame_resized)
 
-        for poly_xy, inside, (cx, cy) in boxes_info:
-            if inside:
-                if self.violation_start_time is not None:
-                    elapsed = current_time - self.violation_start_time
-                    hh = int(elapsed // 3600)
-                    mm = int((elapsed % 3600) // 60)
-                    ss = int(elapsed % 60)
-                    timer_str = f"{hh:02}:{mm:02}:{ss:02}"
-                    cvzone.putTextRect(frame_resized, timer_str, (int(cx), int(cy) - 40), scale=1, thickness=2, offset=5, colorR=(0, 70, 255), colorT=(255, 255, 255))
-                cvzone.putTextRect(frame_resized, "Violation!", (int(cx), int(cy) - 10), scale=1, thickness=2, offset=5, colorR=(0, 70, 255), colorT=(255, 255, 255))
+        # Tambahkan teks durasi & status
+        if any_inside and self.accumulated_duration > 0:
+            # Tampilkan akumulasi ke frame
+            hh = int(self.accumulated_duration // 3600)
+            mm = int((self.accumulated_duration % 3600) // 60)
+            ss = int(self.accumulated_duration % 60)
+            dur_str = f"{hh:02}:{mm:02}:{ss:02}"
+            # Tulis di pojok
+            cvzone.putTextRect(frame_resized, f"Duration: {dur_str}", (10, 40), scale=1, thickness=2, colorR=(0, 70, 255))
+            # Jika sudah > 10 menit => “Violation”
+            # Kalau > 15 detik => “Warning”
+            if self.accumulated_duration < self.violation_threshold:
+                cvzone.putTextRect(frame_resized, "Warning!" if self.accumulated_duration >= self.warning_threshold else "Inside", (10, 70), scale=1, thickness=2, colorR=(0, 70, 255))
             else:
-                cvzone.putTextRect(frame_resized, "Warning!", (int(cx), int(cy) - 10), scale=1, thickness=2, offset=5, colorR=(0, 255, 255), colorT=(0, 0, 0))
+                cvzone.putTextRect(frame_resized, "Violation!", (10, 70), scale=1, thickness=2, colorR=(0, 0, 255))
 
         return frame_resized, overlap_detected
 
+    # Di bawah, fungsi-fungsi DB sama, hanya logika panggilannya berbeda
+    def _handle_violation_state(self, state_str, frame, elapsed):
+        """
+        Tangani pembuatan/update record di DB.
+        state_str = "Terjadi Warning 1-10 Menit" atau "Terjadi Violation >10 Menit"
+        """
+        if self.current_state != state_str:
+            self.current_state = state_str
+            today = datetime.now().date()
+            if today != self.last_update_date:
+                self.insert_done_for_today = False
+                self.violation_row_id = None
+                self.last_update_date = today
+
+            table_name = "violation"
+            if table_name == "violation":
+                if not self.insert_done_for_today:
+                    # Insert baru
+                    self._check_or_create_violation_row(frame, state_str)
+                else:
+                    # Update baris
+                    self._update_violation_row(frame, state_str)
+
+    def _check_or_create_violation_row(self, frame, state_str):
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        try:
+            conn = pymysql.connect(host="10.5.0.2", user="robot", password="robot123", database="visualai_db", port=3307)
+            with conn.cursor() as cursor:
+                check_sql = """
+                    SELECT id, state
+                    FROM violation
+                    WHERE camera_name=%s
+                      AND DATE(created_at) = %s
+                    ORDER BY id DESC
+                    LIMIT 1
+                """
+                cursor.execute(check_sql, (self.camera_name, today_str))
+                row = cursor.fetchone()
+                if row:
+                    self.violation_row_id = row[0]
+                    self.insert_done_for_today = True
+                    self._update_violation_row(frame, state_str)
+                else:
+                    data_handler = DataHandler(table="violation", task="-CN")
+                    args = state_str
+                    data_handler.save_data(frame, args, self.camera_name, insert=True)
+                    get_id_sql = """
+                        SELECT id
+                        FROM violation
+                        WHERE camera_name=%s
+                          AND DATE(created_at)=%s
+                        ORDER BY id DESC
+                        LIMIT 1
+                    """
+                    cursor.execute(get_id_sql, (self.camera_name, today_str))
+                    new_row = cursor.fetchone()
+                    if new_row:
+                        self.violation_row_id = new_row[0]
+                        self.insert_done_for_today = True
+            conn.close()
+        except Exception as e:
+            print(f"Error check_or_create_violation_row: {e}")
+
+    def _update_violation_row(self, frame, state_str):
+        if not self.violation_row_id:
+            return
+        data_handler = DataHandler(table="violation", task="(violation)")
+        data_handler.save_data(frame, state_str, self.camera_name, insert=False)
+        try:
+            with open(data_handler.image_path, "rb") as f:
+                binary_image = f.read()
+            conn = pymysql.connect(host="10.5.0.2", user="robot", password="robot123", database="visualai_db", port=3307)
+            with conn.cursor() as cursor:
+                sql = """
+                    UPDATE violation
+                    SET state=%s,
+                        image=%s
+                    WHERE id=%s
+                """
+                cursor.execute(sql, (state_str, binary_image, self.violation_row_id))
+                conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"Error updating violation row: {e}")
+
     def main(self):
-        state = ""
         skip_frames = 2
         frame_count = 0
         window_name = f"CND:{self.camera_name}"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(window_name, self.window_size)
-        final_overlap = 0
+
+        # (*) Waktu untuk perhitungan akumulasi antar frame
+        self.prev_time_for_acc = time.time()
 
         try:
             if self.video_fps is None:
-                self.frame_queue = queue.Queue(maxsize=10)
+                # Streaming
                 self.frame_thread = threading.Thread(target=self.capture_frame, daemon=True)
                 self.frame_thread.start()
 
@@ -228,15 +331,18 @@ class ConesDetector:
                     frame_count += 1
                     if frame_count % skip_frames != 0:
                         continue
+
                     current_time = time.time()
                     time_diff = current_time - self.prev_frame_time
                     self.fps = 1 / time_diff if time_diff > 0 else 0
                     self.prev_frame_time = current_time
+
                     frame_resized, final_overlap = self.process_frame(frame, current_time)
-                    cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
+
+                    cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 100), scale=1, thickness=2, offset=5)
                     cv2.imshow(window_name, frame_resized)
                     key = cv2.waitKey(1) & 0xFF
-                    if key == ord("n") or key == ord("N"):
+                    if key in [ord("n"), ord("N")]:
                         print("Manual stop detected.")
                         self.stop_event.set()
                         break
@@ -244,34 +350,44 @@ class ConesDetector:
                 cv2.destroyAllWindows()
                 if self.frame_thread.is_alive():
                     self.frame_thread.join()
+
             else:
+                # Video File
                 cap = cv2.VideoCapture(self.video_source)
-                frame_delay = int(1000 / self.video_fps)
+                frame_delay = int(1000 / self.video_fps) if self.video_fps > 0 else 40
+
                 while cap.isOpened() and not self.stop_event.is_set():
                     start_time = time.time()
                     ret, frame = cap.read()
                     if not ret:
                         print("Video ended.")
                         break
+
                     frame_count += 1
                     if frame_count % skip_frames != 0:
                         continue
+
                     current_time = time.time()
                     time_diff = current_time - self.prev_frame_time
                     self.fps = 1 / time_diff if time_diff > 0 else 0
                     self.prev_frame_time = current_time
+
                     frame_resized, final_overlap = self.process_frame(frame, current_time)
-                    cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 90), scale=1, thickness=2, offset=5)
+
+                    cvzone.putTextRect(frame_resized, f"FPS: {int(self.fps)}", (10, 100), scale=1, thickness=2, offset=5)
                     cv2.imshow(window_name, frame_resized)
+
                     processing_time = (time.time() - start_time) * 1000
                     adjusted_delay = max(int(frame_delay - processing_time), 1)
                     key = cv2.waitKey(adjusted_delay) & 0xFF
-                    if key == ord("n") or key == ord("N"):
+                    if key in [ord("n"), ord("N")]:
                         print("Manual stop detected.")
                         self.stop_event.set()
                         break
+
                 cap.release()
                 cv2.destroyAllWindows()
+
         finally:
             print("CND is stopped.")
 
@@ -279,7 +395,7 @@ class ConesDetector:
 if __name__ == "__main__":
     cnd = ConesDetector(
         camera_name="CUTTING4",
-        video_source=r"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\videos\cones.mp4",
+        # video_source=r"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\videos\cones.mp4",
         is_insert=False,
     )
     cnd.main()
