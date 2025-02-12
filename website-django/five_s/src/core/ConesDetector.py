@@ -20,7 +20,7 @@ class ConesDetector:
         self.rois, self.ip_camera = self.camera_config()
 
         self.prev_frame_time = 0
-        self.model = YOLO("D:/NWR/run/kon/version2/weights/best.pt").to("cuda")
+        self.model = YOLO(r"\\10.5.0.3\VISUALAI\website-django\five_s\static\resources\models\kon\version2\weights\best.pt").to("cuda")
         self.model.overrides["verbose"] = False
 
         self.window_width, self.window_height = window_size
