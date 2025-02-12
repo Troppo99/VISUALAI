@@ -1,13 +1,41 @@
 import cv2
 import math
 import os
-
-file_name = "SEWING1"
-# video_path = "webcam"
-video_path = "rtsp://admin:oracle2015@172.16.0.14:554/Streaming/Channels/1"
+import json
 
 
-chains = []
+def camera_config():
+    with open(r"\\10.5.0.3\VISUALAI\website-django\static\resources\conf\camera_config.json", "r") as f:
+        config = json.load(f)
+    ip = config["CUTTING9"]["ip"]
+    return ip
+
+
+# Input source (RTSP link, local video file, image file)
+file_name = "coordinates"
+
+video_path = f"rtsp://admin:oracle2015@{camera_config()}:554/Streaming/Channels/1"
+# Contoh lainnya:
+# video_path = "rtsp://username:password@ip_address:554/Streaming/Channels/1"
+# video_path = "C:/path/to/video.mp4"
+# video_path = "C:/path/to/image.jpg"
+
+# Direktori tempat file JSON akan disimpan
+# OUTPUT_DIRECTORY = r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf"
+# os.makedirs(OUTPUT_DIRECTORY, exist_ok=True)
+
+# Resolusi asli dan baru
+ORIGINAL_WIDTH = 960
+ORIGINAL_HEIGHT = 540
+NEW_WIDTH = 640
+NEW_HEIGHT = 640
+
+# Faktor skala
+SCALE_X = NEW_WIDTH / ORIGINAL_WIDTH  # ≈ 0.6667
+SCALE_Y = NEW_HEIGHT / ORIGINAL_HEIGHT  # ≈ 1.1852
+
+# Initialize variables for storing keypoints
+chains = []  # List to store all chains of keypoints
 dragging = False
 preview_point = None
 magnet_threshold = 10
@@ -95,104 +123,138 @@ def print_chains():
                 print(f"  Point {i + 1}: ({point[0]}, {point[1]})")
 
 
+def scale_coordinate(coord):
+    """
+    Mengubah ukuran koordinat berdasarkan faktor skala.
+    """
+    x, y = coord
+    new_x = round(x * SCALE_X)
+    new_y = round(y * SCALE_Y)
+    return [new_x, new_y]
+
+
 def print_borders():
     borders = [[[p[0], p[1]] for p in chain] for chain in chains if len(chain) > 0]
-    print(f"borders = {borders}")
+    print(f"Original Borders = {borders}")
+
+    # Skalakan koordinat
+    scaled_borders = [[scale_coordinate(p) for p in chain] for chain in chains if len(chain) > 0]
+    print(f"Scaled Borders = {scaled_borders}")
+
+    # Simpan ke file JSON
+    # output_file = os.path.join(OUTPUT_DIRECTORY, f"{file_name}_scaled.json")
+    # try:
+    #     with open(output_file, "w", encoding="utf-8") as f:
+    #         json.dump(scaled_borders, f, indent=2)
+    #     print(f"Koordinat yang diskalakan telah disimpan di: {output_file}")
+    # except Exception as e:
+    #     print(f"Error menyimpan file JSON: {e}")
 
 
-is_image = False
-is_video = False
-cap_source = None
+def main():
+    global chains  # Tambahkan ini untuk memperbaiki UnboundLocalError
+    """
+    Memproses input video atau gambar, memungkinkan pengguna untuk memilih ROI,
+    menskalakan koordinat, dan menyimpan hasilnya ke file JSON.
+    """
+    # Cek apakah input adalah RTSP/URL, file video atau gambar
+    is_image = False
+    is_video = False
 
-if video_path.lower() == "webcam":
-    is_video = True
-    cap_source = 0
-elif video_path.startswith("rtsp://"):
-    is_video = True
-    cap_source = video_path
-elif os.path.isfile(video_path):
-    ext = os.path.splitext(video_path)[1].lower()
-    if ext in [".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"]:
-        is_image = True
-    else:
+    if video_path.startswith("rtsp://"):
+        # Anggap sebagai RTSP stream
         is_video = True
-        cap_source = video_path
-else:
-    print("Error: Path is not RTSP, not a valid file, and not 'webcam'.")
-    exit()
-
-cv2.namedWindow("Video")
-cv2.setMouseCallback("Video", create_keypoint)
-
-if is_image:
-    frame = cv2.imread(video_path)
-    if frame is None:
-        print("Error: could not read image.")
-        exit()
-    frame = cv2.resize(frame, (display_width, display_height))
-
-    while True:
-        frame_copy = frame.copy()
-        draw_chains(frame_copy)
-        if dragging and preview_point is not None:
-            if len(chains) > 0 and len(chains[-1]) > 0:
-                cv2.line(frame_copy, chains[-1][-1], preview_point, (255, 0, 0), 2)
-            cv2.circle(frame_copy, preview_point, 5, (0, 255, 0), -1)
-        cv2.imshow("Video", frame_copy)
-        key = cv2.waitKey(1) & 0xFF
-        if key == ord("n") or key == ord("N"):
-            print_borders()
-            break
-        elif key == 13:
-            if len(chains) > 0 and len(chains[-1]) > 0:
-                print_chains()
-                chains.append([])
-        elif key == ord("a"):
-            chains = []
-        elif key == ord("f"):
-            undo_last_point()
-
-else:
-    cap = cv2.VideoCapture(cap_source)
-    if not cap.isOpened():
-        print("Error: Could not open video stream.")
+    elif os.path.isfile(video_path):
+        # Cek ekstensi file
+        ext = os.path.splitext(video_path)[1].lower()
+        if ext in [".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"]:
+            is_image = True
+        else:
+            is_video = True
+    else:
+        # Jika path bukan file lokal dan bukan rtsp, anggap video gagal
+        print("Error: Path is not RTSP and not a valid file.")
         exit()
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            # Jika video file habis, mulai dari frame pertama lagi
-            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+    cv2.namedWindow("Video")
+    cv2.setMouseCallback("Video", create_keypoint)
+
+    if is_image:
+        # Jika image, baca sekali
+        frame = cv2.imread(video_path)
+        if frame is None:
+            print("Error: could not read image.")
+            exit()
+        frame = cv2.resize(frame, (display_width, display_height))
+
+        # Tampilkan frame dan tunggu input user
+        while True:
+            frame_copy = frame.copy()
+            draw_chains(frame_copy)
+            if dragging and preview_point is not None:
+                if len(chains) > 0 and len(chains[-1]) > 0:
+                    cv2.line(frame_copy, chains[-1][-1], preview_point, (255, 0, 0), 2)
+                cv2.circle(frame_copy, preview_point, 5, (0, 255, 0), -1)
+            cv2.imshow("Video", frame_copy)
+            key = cv2.waitKey(1) & 0xFF
+            if key in [ord("n"), ord("N")]:
+                print_borders()
+                break
+            elif key == 13:
+                if len(chains) > 0 and len(chains[-1]) > 0:
+                    print_chains()
+                    chains.append([])
+            elif key == ord("a"):
+                chains = []
+            elif key == ord("f"):
+                undo_last_point()
+
+    else:
+        # Jika video / RTSP
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            print("Error: Could not open video stream.")
+            exit()
+
+        while True:
             ret, frame = cap.read()
             if not ret:
-                print("Failed to grab frame, exiting.")
+                # Jika di video file sudah habis, ulangi dari awal
+                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                ret, frame = cap.read()
+                if not ret:
+                    print("Failed to grab frame, exiting.")
+                    break
+
+            frame = cv2.resize(frame, (display_width, display_height))
+            draw_chains(frame)
+
+            if dragging and preview_point is not None:
+                frame_copy = frame.copy()
+                if len(chains) > 0 and len(chains[-1]) > 0:
+                    cv2.line(frame_copy, chains[-1][-1], preview_point, (255, 0, 0), 2)
+                cv2.circle(frame_copy, preview_point, 5, (0, 255, 0), -1)
+                cv2.imshow("Video", frame_copy)
+            else:
+                cv2.imshow("Video", frame)
+
+            key = cv2.waitKey(1) & 0xFF
+            if key in [ord("n"), ord("N")]:
+                print_borders()
                 break
+            elif key == 13:
+                if len(chains) > 0 and len(chains[-1]) > 0:
+                    print_chains()
+                    chains.append([])
+            elif key == ord("a"):
+                chains = []
+            elif key == ord("f"):
+                undo_last_point()
 
-        frame = cv2.resize(frame, (display_width, display_height))
-        draw_chains(frame)
+        cap.release()
 
-        if dragging and preview_point is not None:
-            frame_copy = frame.copy()
-            if len(chains) > 0 and len(chains[-1]) > 0:
-                cv2.line(frame_copy, chains[-1][-1], preview_point, (255, 0, 0), 2)
-            cv2.circle(frame_copy, preview_point, 5, (0, 255, 0), -1)
-            cv2.imshow("Video", frame_copy)
-        else:
-            cv2.imshow("Video", frame)
+    cv2.destroyAllWindows()
 
-        key = cv2.waitKey(1) & 0xFF
-        if key == ord("n") or key == ord("N"):
-            print_borders()
-            break
-        elif key == 13:
-            if len(chains) > 0 and len(chains[-1]) > 0:
-                print_chains()
-                chains.append([])
-        elif key == ord("a"):
-            chains = []
-        elif key == ord("f"):
-            undo_last_point()
 
-    cap.release()
-
-cv2.destroyAllWindows()
+if __name__ == "__main__":
+    main()
