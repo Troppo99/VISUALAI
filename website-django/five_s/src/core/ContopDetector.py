@@ -7,7 +7,7 @@ sys.path.append(r"\\10.5.0.3\VISUALAI\website-django\five_s\src")
 from libs.DataHandler import DataHandler
 
 
-class ConesDetector:
+class ContopDetector:
     def __init__(self, confidence_threshold=0.0, video_source=None, camera_name=None, window_size=(320, 240), stop_event=None, is_insert=False):
         self.stop_event = stop_event
         if self.stop_event is None:
@@ -20,7 +20,7 @@ class ConesDetector:
         self.rois, self.ip_camera = self.camera_config()
 
         self.prev_frame_time = 0
-        self.model = YOLO(r"website-django/five_s/static/resources/models/ctd2l.pt").to("cuda")
+        self.model = YOLO(r"\\10.5.0.3\VISUALAI\website-django\five_s\static\resources\models\ctd2l.pt").to("cuda")
         self.model.overrides["verbose"] = False
 
         self.window_width, self.window_height = window_size
@@ -126,8 +126,16 @@ class ConesDetector:
         for result in results:
             if result.masks is None:
                 continue
-            for poly_xy in result.masks.xy:
+            if result.boxes is None:
+                continue
+            classes = result.boxes.cls
+            for i, poly_xy in enumerate(result.masks.xy):
+            # for poly_xy in result.masks.xy:
                 if len(poly_xy) < 3:
+                    continue
+                class_index = int(classes[i])
+                class_name = self.model.names[class_index]
+                if class_name != "CONTOP":
                     continue
                 polygon = Polygon(poly_xy)
                 if polygon.is_empty or not polygon.is_valid:
@@ -265,7 +273,7 @@ class ConesDetector:
                     self.insert_done_for_today = True
                     self._update_violation_row(frame, state_str)
                 else:
-                    data_handler = DataHandler(table="violation", task="-CN")
+                    data_handler = DataHandler(table="violation", task="-CT")
                     args = state_str
                     data_handler.save_data(frame, args, self.camera_name, insert=True)
                     get_id_sql = """
@@ -310,7 +318,7 @@ class ConesDetector:
     def main(self):
         skip_frames = 2
         frame_count = 0
-        window_name = f"CND:{self.camera_name}"
+        window_name = f"CTD:{self.camera_name}"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(window_name, self.window_size)
 
@@ -393,9 +401,9 @@ class ConesDetector:
 
 
 if __name__ == "__main__":
-    cnd = ConesDetector(
+    ctd = ContopDetector(
         camera_name="FREEMETAL1",
         # video_source=r"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\videos\cones.mp4",
         is_insert=False,
     )
-    cnd.main()
+    ctd.main()

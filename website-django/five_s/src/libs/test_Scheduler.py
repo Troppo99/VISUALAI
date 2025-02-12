@@ -21,6 +21,8 @@ class Scheduler:
                 from core.BroCarpDetector import BroCarpDetector as Detector
             elif code == "cnd":
                 from core.ConesDetector import ConesDetector as Detector
+            elif code == "ctd":
+                from core.ContopDetector import ContopDetector as Detector
 
         self.Detector = Detector
 
