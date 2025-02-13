@@ -5,7 +5,7 @@ from sklearn.cluster import KMeans
 
 class SkipDetector:
     def __init__(self, camera_name, windwo_size=(960, 540), stop_event=None):
-        self.video_source = 0
+        self.video_source = 1
         self.camera_name = camera_name
         self.window_size = windwo_size
         self.stop_event = stop_event
@@ -119,28 +119,23 @@ class SkipDetector:
 
     def process_frame(self, frame):
         frame_960 = cv2.resize(frame, (960, 540))
-        if self.window_name:
-            k_val = cv2.getTrackbarPos("KSize", self.window_name)
-        else:
-            k_val = 5
-        if k_val % 2 == 0:
-            k_val += 1
-        if k_val <= 0:
-            k_val = 1
+        k_val = cv2.getTrackbarPos("KSize", self.window_name) if self.window_name else 5
+        k_val = k_val + 1 if k_val % 2 == 0 else k_val
+        k_val = k_val if k_val > 0 else 1
         blurred = cv2.GaussianBlur(frame_960, (k_val, k_val), 5)
         h, w = blurred.shape[:2]
         data = blurred.reshape(-1, 3).astype(np.float32)
         km = KMeans(n_clusters=2, random_state=42).fit(data)
         labels = km.labels_.reshape(h, w)
         centers = km.cluster_centers_
-        brightness = []
-        for c in centers:
-            b, g, r = c
-            gray_approx = 0.114 * b + 0.587 * g + 0.299 * r
-            brightness.append(gray_approx)
+        brightness = [0.114 * c[0] + 0.587 * c[1] + 0.299 * c[2] for c in centers]
         darkest_cluster = np.argmin(brightness)
         mask = np.where(labels == darkest_cluster, 0, 255).astype(np.uint8)
 
+        white_pixels = int(np.sum(mask == 255))
+        black_pixels = int(np.sum(mask == 0))
+        total = white_pixels + black_pixels
+        white_percent = (white_pixels / total) * 100 if total > 0 else 0
         result_frame, is_broken, line_breaks_in_roi, circle_in_roi_count = self.detect_line_breaks_bbox_horizontal(frame_960, mask, gap_threshold=30)
         if is_broken:
             cvzone.putTextRect(result_frame, "Frame : Skip Detected", (10, 40), 1, 2, offset=5, colorR=(0, 255, 255), colorT=(0, 0, 0))
@@ -160,6 +155,8 @@ class SkipDetector:
         hMini, wMini = mini_blurred.shape[:2]
         result_frame[H - hMini : H, 0:wMini] = mini_blurred
         result_frame[H - hMini : H, W - wMini : W] = mini_mask
+        cvzone.putTextRect(result_frame, f"White: {white_pixels} ({white_percent:.4f}%)", (10, 120), 1, 2, offset=5)
+        cvzone.putTextRect(result_frame, f"Black: {black_pixels}", (10, 145), 1, 2, offset=5)
         return result_frame
 
     def main(self):
@@ -190,7 +187,7 @@ class SkipDetector:
             cvzone.putTextRect(frame_processed, f"FPS: {int(fps)}", (10, 90), 1, 2, offset=5)
             cv2.imshow(self.window_name, frame_processed)
             key = cv2.waitKey(1) & 0xFF
-            if key == ord("n") or key == ord("N"):
+            if key in [ord("n"), ord("N")]:
                 print("Manual stop detected.")
                 self.stop_event.set()
                 break
