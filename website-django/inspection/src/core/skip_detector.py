@@ -136,17 +136,23 @@ class SkipDetector:
         black_pixels = int(np.sum(mask == 0))
         total = white_pixels + black_pixels
         white_percent = (white_pixels / total) * 100 if total > 0 else 0
-        result_frame, is_broken, line_breaks_in_roi, circle_in_roi_count = self.detect_line_breaks_bbox_horizontal(frame_960, mask, gap_threshold=30)
-        if is_broken:
-            cvzone.putTextRect(result_frame, "Frame : Skip Detected", (10, 40), 1, 2, offset=5, colorR=(0, 255, 255), colorT=(0, 0, 0))
-        else:
-            cvzone.putTextRect(result_frame, "Frame : Good", (10, 40), 1, 2, offset=5, colorR=(0, 255, 0), colorT=(0, 0, 0))
 
-        if line_breaks_in_roi:
-            cvzone.putTextRect(result_frame, f"ROI : Skip Detected ({circle_in_roi_count})", (10, 65), 1, 2, offset=5, colorR=(0, 255, 255), colorT=(0, 0, 0))
-            self.insert_defect_record(circle_in_roi_count, result_frame)
+        if white_percent > 5:
+            result_frame = frame_960.copy()
+            cvzone.putTextRect(result_frame, "Detection Paused", (10, 40), 1, 2, offset=5, colorR=(255, 0, 0), colorT=(255, 255, 255))
+            circle_in_roi_count = 0
         else:
-            cvzone.putTextRect(result_frame, "ROI : Good", (10, 65), 1, 2, offset=5, colorR=(0, 255, 0), colorT=(0, 0, 0))
+            result_frame, is_broken, line_breaks_in_roi, circle_in_roi_count = self.detect_line_breaks_bbox_horizontal(frame_960, mask, gap_threshold=30)
+            if is_broken:
+                cvzone.putTextRect(result_frame, "Frame : Skip Detected", (10, 40), 1, 2, offset=5, colorR=(0, 255, 255), colorT=(0, 0, 0))
+            else:
+                cvzone.putTextRect(result_frame, "Frame : Good", (10, 40), 1, 2, offset=5, colorR=(0, 255, 0), colorT=(0, 0, 0))
+            if line_breaks_in_roi:
+                cvzone.putTextRect(result_frame, f"ROI : Skip Detected ({circle_in_roi_count})", (10, 65), 1, 2, offset=5, colorR=(0, 255, 255), colorT=(0, 0, 0))
+                self.insert_defect_record(circle_in_roi_count, result_frame)
+            else:
+                cvzone.putTextRect(result_frame, "ROI : Good", (10, 65), 1, 2, offset=5, colorR=(0, 255, 0), colorT=(0, 0, 0))
+
         self.draw_rois(result_frame)
         mask_3ch = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
         mini_blurred = cv2.resize(blurred, (224, 126))
@@ -155,8 +161,10 @@ class SkipDetector:
         hMini, wMini = mini_blurred.shape[:2]
         result_frame[H - hMini : H, 0:wMini] = mini_blurred
         result_frame[H - hMini : H, W - wMini : W] = mini_mask
-        cvzone.putTextRect(result_frame, f"White: {white_pixels} ({white_percent:.4f}%)", (10, 120), 1, 2, offset=5)
-        cvzone.putTextRect(result_frame, f"Black: {black_pixels}", (10, 145), 1, 2, offset=5)
+        cv2.rectangle(result_frame, (0, H - hMini), (wMini, H), (0, 255, 0), 2)
+        cv2.rectangle(result_frame, (W - wMini, H - hMini), (W, H), (0, 255, 0), 2)
+        cvzone.putTextRect(result_frame, f"White: {white_pixels} ({white_percent:.4f}%)", (10, 115), 1, 2, offset=5)
+        cvzone.putTextRect(result_frame, f"Black: {black_pixels}", (10, 140), 1, 2, offset=5)
         return result_frame
 
     def main(self):
