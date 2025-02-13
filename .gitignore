@@ -16,3 +16,4 @@ run-*.py
 yolo11n.pt
 YOLO11/*
 **.mp3
+**/audio/*
