@@ -1,8 +1,10 @@
 import cv2
 import mediapipe as mp
 import numpy as np
-import pygame
 import time
+import threading
+import pyaudio
+import wave
 
 vertices = []
 drag_idx = -1
@@ -56,49 +58,71 @@ while True:
 
 cv2.destroyWindow("Select ROI")
 
-pygame.init()
-pygame.mixer.init()
-pygame.mixer.music.load("assets/berton.mp3")
+speaker_index = 4
+
+
+def play_wav(wav_file, device_index):
+    wf = wave.open(wav_file, "rb")
+    pa = pyaudio.PyAudio()
+    stream = pa.open(format=pa.get_format_from_width(wf.getsampwidth()), channels=wf.getnchannels(), rate=wf.getframerate(), output=True, output_device_index=device_index)
+    data = wf.readframes(1024)
+    while data:
+        stream.write(data)
+        data = wf.readframes(1024)
+    stream.stop_stream()
+    stream.close()
+    pa.terminate()
+
+
+music_should_loop = False
+audio_thread = None
+
+
+def audio_loop():
+    global music_should_loop
+    while music_should_loop:
+        play_wav("assets/audio/berton.wav", speaker_index)
+
 
 mp_face_mesh = mp.solutions.face_mesh
 mp_drawing = mp.solutions.drawing_utils
 mp_styles = mp.solutions.drawing_styles
 
+face_mesh = mp_face_mesh.FaceMesh(static_image_mode=False, max_num_faces=1, refine_landmarks=True, min_detection_confidence=0.8, min_tracking_confidence=0.5)
+
 detection_start_time = None
-music_should_continue = False
 
-with mp_face_mesh.FaceMesh(static_image_mode=False, max_num_faces=1, refine_landmarks=True, min_detection_confidence=0.8, min_tracking_confidence=0.5) as face_mesh:
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            continue
-        mask = np.zeros(frame.shape[:2], dtype=np.uint8)
-        pts = np.array(vertices, np.int32)
-        cv2.fillPoly(mask, [pts], 255)
-        roi_frame = cv2.bitwise_and(frame, frame, mask=mask)
-        disp = roi_frame.copy()
-        cv2.polylines(disp, [pts.reshape((-1, 1, 2))], True, (0, 255, 0), 2)
-        rgb = cv2.cvtColor(roi_frame, cv2.COLOR_BGR2RGB)
-        results = face_mesh.process(rgb)
-        if results.multi_face_landmarks:
-            for lm in results.multi_face_landmarks:
-                mp_drawing.draw_landmarks(disp, lm, mp_face_mesh.FACEMESH_CONTOURS, landmark_drawing_spec=mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=1, circle_radius=1), connection_drawing_spec=mp_styles.get_default_face_mesh_contours_style())
-        face_detected = results.multi_face_landmarks is not None
-        if face_detected:
-            if detection_start_time is None:
-                detection_start_time = time.time()
-            elif time.time() - detection_start_time >= 1:
-                music_should_continue = True
-                if not pygame.mixer.music.get_busy():
-                    pygame.mixer.music.play(loops=0)
-        else:
-            detection_start_time = None
-            music_should_continue = False
-        if music_should_continue and not pygame.mixer.music.get_busy():
-            pygame.mixer.music.play(loops=0)
-        cv2.imshow("Mediapipe Face Pose", disp)
-        if cv2.waitKey(5) & 0xFF == ord("n"):
-            break
+while cap.isOpened():
+    ret, frame = cap.read()
+    if not ret:
+        continue
+    mask = np.zeros(frame.shape[:2], dtype=np.uint8)
+    pts = np.array(vertices, np.int32)
+    cv2.fillPoly(mask, [pts], 255)
+    roi_frame = cv2.bitwise_and(frame, frame, mask=mask)
+    disp = roi_frame.copy()
+    cv2.polylines(disp, [pts.reshape((-1, 1, 2))], True, (0, 255, 0), 2)
+    rgb = cv2.cvtColor(roi_frame, cv2.COLOR_BGR2RGB)
+    results = face_mesh.process(rgb)
+    if results.multi_face_landmarks:
+        for lm in results.multi_face_landmarks:
+            mp_drawing.draw_landmarks(disp, lm, mp_face_mesh.FACEMESH_CONTOURS, landmark_drawing_spec=mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=1, circle_radius=1), connection_drawing_spec=mp_styles.get_default_face_mesh_contours_style())
+    face_detected = results.multi_face_landmarks is not None
+    if face_detected:
+        if detection_start_time is None:
+            detection_start_time = time.time()
+        elif time.time() - detection_start_time >= 1:
+            music_should_loop = True
+            if audio_thread is None or not audio_thread.is_alive():
+                audio_thread = threading.Thread(target=audio_loop, daemon=True)
+                audio_thread.start()
+    else:
+        detection_start_time = None
+        music_should_loop = False
+    cv2.imshow("Mediapipe Face Pose", disp)
+    if cv2.waitKey(5) & 0xFF == ord("n"):
+        break
 
+face_mesh.close()
 cap.release()
 cv2.destroyAllWindows()
