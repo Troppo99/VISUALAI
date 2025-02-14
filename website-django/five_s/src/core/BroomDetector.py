@@ -17,7 +17,7 @@ class BroomDetector:
         self.camera_name = camera_name
         self.window_size = window_size
         self.process_size = (640, 640)
-        self.which_method = which_method
+        self.which_method = "dot" if self.camera_name in ["FREEMETAL1", "FREEMETAL2", "INNERBOX1", "KANTIN1"] else which_method
         self.rois, self.ip_camera = self.camera_config()
         self.choose_video_source()
         self.prev_frame_time = 0
@@ -342,5 +342,5 @@ class BroomDetector:
 
 
 if __name__ == "__main__":
-    bd = BroomDetector(camera_name="ROBOTICS", which_method="dot", is_insert=False)
+    bd = BroomDetector(camera_name="KANTIN1", is_insert=False)
     bd.main()
