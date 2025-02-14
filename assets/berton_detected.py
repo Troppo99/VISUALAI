@@ -29,7 +29,7 @@ def mouse_cb(event, x, y, flags, _):
         drag_idx = -1
 
 
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 cv2.namedWindow("Select ROI")
 cv2.setMouseCallback("Select ROI", mouse_cb)
 

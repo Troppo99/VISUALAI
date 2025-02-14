@@ -48,7 +48,7 @@ class BroomDetector:
             config = json.load(f)
         ip = config[self.camera_name]["ip"]
         if self.which_method == "dot":
-            rois_path = config[self.camera_name]["bd_dot"]
+            rois_path = config[self.camera_name]["bd_rois"]
             with open(rois_path, "r") as dot_file:
                 dot_data = json.load(dot_file)
             if dot_data and isinstance(dot_data[0], list) and isinstance(dot_data[0][0], list):
