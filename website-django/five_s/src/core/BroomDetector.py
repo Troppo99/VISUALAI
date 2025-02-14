@@ -8,7 +8,7 @@ from libs.DataHandler import DataHandler
 
 
 class BroomDetector:
-    def __init__(self, confidence_threshold=0.5, video_source=None, camera_name=None, window_size=(320, 240), stop_event=None, is_insert=False):
+    def __init__(self, confidence_threshold=0.5, video_source=None, camera_name=None, window_size=(320, 240), stop_event=None, is_insert=False, which_method="trail_map"):
         self.stop_event = stop_event
         if self.stop_event is None:
             self.stop_event = threading.Event()
@@ -17,16 +17,20 @@ class BroomDetector:
         self.camera_name = camera_name
         self.window_size = window_size
         self.process_size = (640, 640)
+        self.which_method = which_method
         self.rois, self.ip_camera = self.camera_config()
         self.choose_video_source()
         self.prev_frame_time = 0
         self.model = YOLO(r"\\10.5.0.3\VISUALAI\website-django\five_s\static\resources\models\bd6l.pt").to("cuda")
         self.model.overrides["verbose"] = False
 
-        if len(self.rois) > 1:
-            self.union_roi = unary_union(self.rois)
-        elif len(self.rois) == 1:
-            self.union_roi = self.rois[0]
+        if self.which_method != "dot":
+            if len(self.rois) > 1:
+                self.union_roi = unary_union(self.rois)
+            elif len(self.rois) == 1:
+                self.union_roi = self.rois[0]
+            else:
+                self.union_roi = None
         else:
             self.union_roi = None
 
@@ -43,21 +47,36 @@ class BroomDetector:
         with open(r"\\10.5.0.3\VISUALAI\website-django\five_s\static\resources\conf\camera_config.json", "r") as f:
             config = json.load(f)
         ip = config[self.camera_name]["ip"]
-        scaled_rois = []
-        rois_path = config[self.camera_name]["bd_rois"]
-        with open(rois_path, "r") as rois_file:
-            original_rois = json.load(rois_file)
-        for roi_group in original_rois:
-            scaled_group = []
-            for x, y in roi_group:
-                scaled_x = int(x * (960 / 1280))
-                scaled_y = int(y * (540 / 720))
-                scaled_group.append((scaled_x, scaled_y))
-            if len(scaled_group) >= 3:
-                polygon = Polygon(scaled_group)
-                if polygon.is_valid:
-                    scaled_rois.append(polygon)
-        return scaled_rois, ip
+        if self.which_method == "dot":
+            rois_path = config[self.camera_name]["bd_dot"]
+            with open(rois_path, "r") as dot_file:
+                dot_data = json.load(dot_file)
+            if dot_data and isinstance(dot_data[0], list) and isinstance(dot_data[0][0], list):
+                dot_data = dot_data[0]
+            scaled_dots = []
+            for point in dot_data:
+                scaled_x = int(float(point[0]) * (960 / 1280))
+                scaled_y = int(float(point[1]) * (540 / 720))
+                scaled_dots.append((scaled_x, scaled_y))
+            self.dot_points = scaled_dots
+            self.dot_status = [False] * len(scaled_dots)
+            return [], ip
+        else:
+            scaled_rois = []
+            rois_path = config[self.camera_name]["bd_rois"]
+            with open(rois_path, "r") as rois_file:
+                original_rois = json.load(rois_file)
+            for roi_group in original_rois:
+                scaled_group = []
+                for x, y in roi_group:
+                    scaled_x = int(x * (960 / 1280))
+                    scaled_y = int(y * (540 / 720))
+                    scaled_group.append((scaled_x, scaled_y))
+                if len(scaled_group) >= 3:
+                    polygon = Polygon(scaled_group)
+                    if polygon.is_valid:
+                        scaled_rois.append(polygon)
+            return scaled_rois, ip
 
     def draw_rois(self, frame):
         if not self.rois:
@@ -122,60 +141,81 @@ class BroomDetector:
 
     def process_frame(self, frame):
         frame_resized = cv2.resize(frame, self.process_size)
-        self.draw_rois(frame_resized)
-        boxes = self.export_frame_detect(frame_resized)
-        output_frame = frame_resized.copy()
-        detected = False
-        for box in boxes:
-            x1, y1, x2, y2, class_id = box
-            overlap_results = self.check_overlap(x1, y1, x2, y2)
-            if any(overlap_results):
-                detected = True
-                obj_box_polygon = Polygon([(x1, y1), (x2, y1), (x2, y2), (x1, y2)])
-                if self.union_roi is not None:
-                    current_area = obj_box_polygon.intersection(self.union_roi)
-                else:
-                    current_area = obj_box_polygon
-
-                if not current_area.is_empty:
-                    new_area = current_area.difference(self.trail_map_polygon)
-
-                    if not new_area.is_empty:
-                        self.trail_map_polygon = self.trail_map_polygon.union(new_area)
-                        self.draw_polygon_on_mask(new_area, self.trail_map_mask, color=(0, 255, 0))
-
+        if self.which_method == "dot":
+            output_frame = frame_resized.copy()
+            for idx, pt in enumerate(self.dot_points):
+                color = (0, 255, 0) if self.dot_status[idx] else (0, 255, 255)
+                cv2.circle(output_frame, pt, 5, color, -1)
+            boxes = self.export_frame_detect(frame_resized)
+            detected = False
+            for box in boxes:
+                x1, y1, x2, y2, class_id = box
+                for idx, pt in enumerate(self.dot_points):
+                    if x1 <= pt[0] <= x2 and y1 <= pt[1] <= y2:
+                        self.dot_status[idx] = True
                 cvzone.cornerRect(output_frame, (x1, y1, x2 - x1, y2 - y1), l=10, rt=0, t=2, colorC=(0, 255, 255))
-                cvzone.putTextRect(output_frame, f"{class_id} {overlap_results}", (x1, y1), scale=1, thickness=2, offset=5)
-
-        overlap_percentage = 0
-        if self.union_roi and not self.union_roi.is_empty:
-            overlap_percentage = (self.trail_map_polygon.area / self.union_roi.area) * 100
-
-        current_time = time.time()
-        if detected:
-            self.last_detection_time = current_time
-            if overlap_percentage >= 50 and self.trail_map_start_time is None:
-                self.trail_map_start_time = current_time
+                cvzone.putTextRect(output_frame, f"{class_id}", (x1, y1), scale=1, thickness=2, offset=5)
+                detected = True
+            touched = sum(1 for status in self.dot_status if status)
+            total = len(self.dot_status)
+            overlap_percentage = (touched / total * 100) if total > 0 else 0
+            cvzone.putTextRect(output_frame, f"Percentage: {overlap_percentage:.2f}%", (10, 60), scale=1, thickness=2, offset=5)
+            return output_frame, overlap_percentage
         else:
-            if self.last_detection_time is None:
-                time_since_last_det = current_time - self.start_run_time
+            self.draw_rois(frame_resized)
+            boxes = self.export_frame_detect(frame_resized)
+            output_frame = frame_resized.copy()
+            detected = False
+            for box in boxes:
+                x1, y1, x2, y2, class_id = box
+                overlap_results = self.check_overlap(x1, y1, x2, y2)
+                if any(overlap_results):
+                    detected = True
+                    obj_box_polygon = Polygon([(x1, y1), (x2, y1), (x2, y2), (x1, y2)])
+                    if self.union_roi is not None:
+                        current_area = obj_box_polygon.intersection(self.union_roi)
+                    else:
+                        current_area = obj_box_polygon
+
+                    if not current_area.is_empty:
+                        new_area = current_area.difference(self.trail_map_polygon)
+
+                        if not new_area.is_empty:
+                            self.trail_map_polygon = self.trail_map_polygon.union(new_area)
+                            self.draw_polygon_on_mask(new_area, self.trail_map_mask, color=(0, 255, 0))
+
+                    cvzone.cornerRect(output_frame, (x1, y1, x2 - x1, y2 - y1), l=10, rt=0, t=2, colorC=(0, 255, 255))
+                    cvzone.putTextRect(output_frame, f"{class_id} {overlap_results}", (x1, y1), scale=1, thickness=2, offset=5)
+
+            overlap_percentage = 0
+            if self.union_roi and not self.union_roi.is_empty:
+                overlap_percentage = (self.trail_map_polygon.area / self.union_roi.area) * 100
+
+            current_time = time.time()
+            if detected:
+                self.last_detection_time = current_time
+                if overlap_percentage >= 50 and self.trail_map_start_time is None:
+                    self.trail_map_start_time = current_time
             else:
-                time_since_last_det = current_time - self.last_detection_time
+                if self.last_detection_time is None:
+                    time_since_last_det = current_time - self.start_run_time
+                else:
+                    time_since_last_det = current_time - self.last_detection_time
 
-            if overlap_percentage < 10 and time_since_last_det > 10:
-                self.reset_trail_map()
-            elif overlap_percentage < 50 and time_since_last_det > 60:
-                self.reset_trail_map()
+                if overlap_percentage < 10 and time_since_last_det > 10:
+                    self.reset_trail_map()
+                elif overlap_percentage < 50 and time_since_last_det > 60:
+                    self.reset_trail_map()
 
-        if overlap_percentage >= 50 and self.trail_map_start_time is not None:
-            if current_time - self.trail_map_start_time > 60 and not self.capture_done:
-                print("capture, save, and send")
-                self.capture_done = True
+            if overlap_percentage >= 50 and self.trail_map_start_time is not None:
+                if current_time - self.trail_map_start_time > 60 and not self.capture_done:
+                    print("capture, save, and send")
+                    self.capture_done = True
 
-        alpha = 0.5
-        output_frame = cv2.addWeighted(output_frame, 1.0, self.trail_map_mask, alpha, 0)
-        cvzone.putTextRect(output_frame, f"Percentage: {overlap_percentage:.2f}%", (10, 60), scale=1, thickness=2, offset=5)
-        return output_frame, overlap_percentage
+            alpha = 0.5
+            output_frame = cv2.addWeighted(output_frame, 1.0, self.trail_map_mask, alpha, 0)
+            cvzone.putTextRect(output_frame, f"Percentage: {overlap_percentage:.2f}%", (10, 60), scale=1, thickness=2, offset=5)
+            return output_frame, overlap_percentage
 
     def reset_trail_map(self):
         self.trail_map_polygon = Polygon()
@@ -302,5 +342,5 @@ class BroomDetector:
 
 
 if __name__ == "__main__":
-    bd = BroomDetector(camera_name="ROBOTICS", is_insert=False)
+    bd = BroomDetector(camera_name="ROBOTICS", which_method="dot", is_insert=False)
     bd.main()
