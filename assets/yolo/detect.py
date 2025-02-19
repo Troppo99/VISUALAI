@@ -1,7 +1,7 @@
 import cv2
 from ultralytics import YOLO
 
-model = YOLO(r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\resources\models\defect3-seg-493\weights\best.pt")
+model = YOLO(r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\resources\models\strip2\weights\best.pt")
 cap = cv2.VideoCapture(
     # r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\videos\test2.mp4",
     0,

@@ -64,7 +64,7 @@ class DefectDetector(ZoomIn):
             self.video = camera_name
         self.choose_video_source()
         self.prev_frame_time = 0
-        self.model = YOLO(r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\resources\models\defect0-det-1280\weights\best.pt")
+        self.model = YOLO(r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\resources\models\strip2\weights\best.pt")
         self.model.overrides["verbose"] = False
 
     def camera_config(self):
@@ -138,7 +138,7 @@ class DefectDetector(ZoomIn):
             x2 = x2 + 10
 
             cvzone.cornerRect(overlay, (x1, y1, x2 - x1, y2 - y1), l=40, rt=0, t=5, colorC=(0, 0, 255))
-            cvzone.putTextRect(overlay, f"{class_id}", (x1, y1), scale=3, thickness=3, offset=5)
+            # cvzone.putTextRect(overlay, f"{class_id}", (x1, y1), scale=3, thickness=3, offset=5)
 
         alpha = 0.5
         output_frame = cv2.addWeighted(overlay, alpha, output_frame, 1 - alpha, 0)
@@ -344,7 +344,7 @@ class DefectDetector(ZoomIn):
 if __name__ == "__main__":
     dfd = DefectDetector(
         camera_name=1,
-        video_source=r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\videos\test0.mp4",
-        # video_source=1,
+        # video_source=r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\videos\test0.mp4",
+        video_source=0,
     )
     dfd.main()
