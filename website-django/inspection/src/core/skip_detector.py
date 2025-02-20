@@ -5,7 +5,7 @@ from sklearn.cluster import KMeans
 
 class SkipDetector:
     def __init__(self, camera_name, windwo_size=(960, 540), stop_event=None):
-        self.video_source = 0
+        self.video_source = 1
         self.camera_name = camera_name
         self.window_size = windwo_size
         self.stop_event = stop_event or threading.Event()

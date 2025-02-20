@@ -16,6 +16,7 @@ run-*.py
 yolo11n.pt
 YOLO11/*
 **.mp3
+**.mp4
 **/audio/*
 coconf/*
 assets/video/walking people.mp4
