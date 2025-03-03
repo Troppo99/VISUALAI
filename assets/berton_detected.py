@@ -29,7 +29,7 @@ def mouse_cb(event, x, y, flags, _):
         drag_idx = -1
 
 
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 cv2.namedWindow("Select ROI")
 cv2.setMouseCallback("Select ROI", mouse_cb)
 
@@ -58,7 +58,7 @@ while True:
 
 cv2.destroyWindow("Select ROI")
 
-speaker_index = 4
+speaker_index = 3
 
 
 def play_wav(wav_file, device_index):
