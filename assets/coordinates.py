@@ -7,35 +7,22 @@ import json
 def camera_config():
     with open(r"\\10.5.0.3\VISUALAI\website-django\static\resources\conf\camera_config.json", "r") as f:
         config = json.load(f)
-    ip = config["CUTTING9"]["ip"]
+    ip = config["GM2CUTTING2"]["ip"]
     return ip
 
 
-# Input source (RTSP link, local video file, image file)
 file_name = "coordinates"
-
 video_path = f"rtsp://admin:oracle2015@{camera_config()}:554/Streaming/Channels/1"
-# Contoh lainnya:
-# video_path = "rtsp://username:password@ip_address:554/Streaming/Channels/1"
-# video_path = "C:/path/to/video.mp4"
-# video_path = "C:/path/to/image.jpg"
 
-# Direktori tempat file JSON akan disimpan
-# OUTPUT_DIRECTORY = r"C:\xampp\htdocs\VISUALAI\website\static\resources\conf"
-# os.makedirs(OUTPUT_DIRECTORY, exist_ok=True)
-
-# Resolusi asli dan baru
 ORIGINAL_WIDTH = 960
 ORIGINAL_HEIGHT = 540
 NEW_WIDTH = 640
 NEW_HEIGHT = 640
 
-# Faktor skala
-SCALE_X = NEW_WIDTH / ORIGINAL_WIDTH  # ≈ 0.6667
-SCALE_Y = NEW_HEIGHT / ORIGINAL_HEIGHT  # ≈ 1.1852
+SCALE_X = NEW_WIDTH / ORIGINAL_WIDTH
+SCALE_Y = NEW_HEIGHT / ORIGINAL_HEIGHT
 
-# Initialize variables for storing keypoints
-chains = []  # List to store all chains of keypoints
+chains = []
 dragging = False
 preview_point = None
 magnet_threshold = 10
@@ -61,11 +48,9 @@ def find_nearest_point(preview_point):
 
 def create_keypoint(event, x, y, flags, param):
     global chains, frame, dragging, preview_point
-
     if event == cv2.EVENT_LBUTTONDOWN:
         dragging = True
         preview_point = (x, y)
-
     elif event == cv2.EVENT_MOUSEMOVE:
         if dragging:
             preview_point = (x, y)
@@ -78,7 +63,6 @@ def create_keypoint(event, x, y, flags, param):
                 cv2.line(frame_copy, chains[-1][-1], preview_point, (255, 0, 0), 2)
             cv2.circle(frame_copy, preview_point, 5, (0, 255, 0), -1)
             cv2.imshow("Video", frame_copy)
-
     elif event == cv2.EVENT_LBUTTONUP:
         if dragging:
             nearest_point = find_nearest_point((x, y))
@@ -124,9 +108,6 @@ def print_chains():
 
 
 def scale_coordinate(coord):
-    """
-    Mengubah ukuran koordinat berdasarkan faktor skala.
-    """
     x, y = coord
     new_x = round(x * SCALE_X)
     new_y = round(y * SCALE_Y)
@@ -136,43 +117,44 @@ def scale_coordinate(coord):
 def print_borders():
     borders = [[[p[0], p[1]] for p in chain] for chain in chains if len(chain) > 0]
     print(f"Original Borders = {borders}")
-
-    # Skalakan koordinat
     scaled_borders = [[scale_coordinate(p) for p in chain] for chain in chains if len(chain) > 0]
     print(f"Scaled Borders = {scaled_borders}")
 
-    # Simpan ke file JSON
-    # output_file = os.path.join(OUTPUT_DIRECTORY, f"{file_name}_scaled.json")
-    # try:
-    #     with open(output_file, "w", encoding="utf-8") as f:
-    #         json.dump(scaled_borders, f, indent=2)
-    #     print(f"Koordinat yang diskalakan telah disimpan di: {output_file}")
-    # except Exception as e:
-    #     print(f"Error menyimpan file JSON: {e}")
+
+# Fungsi untuk memeriksa frame tidak hanya blur/gelap, tapi juga tidak corrupt
+def is_frame_good(frame):
+    # Pastikan frame tidak kosong dan memiliki ukuran yang wajar
+    if frame is None or frame.size == 0:
+        return False
+    h, w = frame.shape[:2]
+    if w < 100 or h < 100:  # ukuran tidak masuk akal
+        return False
+
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    variance = cv2.Laplacian(gray, cv2.CV_64F).var()
+    brightness = cv2.mean(gray)[0]
+    # Threshold bisa disesuaikan; ini hanya contoh
+    if variance < 100:
+        return False
+    if brightness < 50:
+        return False
+    return True
 
 
 def main():
-    global chains  # Tambahkan ini untuk memperbaiki UnboundLocalError
-    """
-    Memproses input video atau gambar, memungkinkan pengguna untuk memilih ROI,
-    menskalakan koordinat, dan menyimpan hasilnya ke file JSON.
-    """
-    # Cek apakah input adalah RTSP/URL, file video atau gambar
+    global chains, frame, dragging, preview_point
     is_image = False
     is_video = False
 
     if video_path.startswith("rtsp://"):
-        # Anggap sebagai RTSP stream
         is_video = True
     elif os.path.isfile(video_path):
-        # Cek ekstensi file
         ext = os.path.splitext(video_path)[1].lower()
         if ext in [".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"]:
             is_image = True
         else:
             is_video = True
     else:
-        # Jika path bukan file lokal dan bukan rtsp, anggap video gagal
         print("Error: Path is not RTSP and not a valid file.")
         exit()
 
@@ -180,14 +162,11 @@ def main():
     cv2.setMouseCallback("Video", create_keypoint)
 
     if is_image:
-        # Jika image, baca sekali
         frame = cv2.imread(video_path)
         if frame is None:
             print("Error: could not read image.")
             exit()
         frame = cv2.resize(frame, (display_width, display_height))
-
-        # Tampilkan frame dan tunggu input user
         while True:
             frame_copy = frame.copy()
             draw_chains(frame_copy)
@@ -208,36 +187,36 @@ def main():
                 chains = []
             elif key == ord("f"):
                 undo_last_point()
-
     else:
-        # Jika video / RTSP
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
             print("Error: Could not open video stream.")
             exit()
 
+        print("Mencari frame yang bagus dari CCTV...")
+        good_frame = None
         while True:
-            ret, frame = cap.read()
-            if not ret:
-                # Jika di video file sudah habis, ulangi dari awal
-                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                ret, frame = cap.read()
-                if not ret:
-                    print("Failed to grab frame, exiting.")
-                    break
-
-            frame = cv2.resize(frame, (display_width, display_height))
-            draw_chains(frame)
-
+            ret, frame_temp = cap.read()
+            # Periksa apakah frame valid (ret True, tidak kosong, ukuran wajar)
+            if not ret or frame_temp is None or frame_temp.size == 0:
+                continue
+            # Jika ukuran frame jauh berbeda dari yang diharapkan, skip frame corrupt
+            h, w = frame_temp.shape[:2]
+            if w < 100 or h < 100:
+                continue
+            if is_frame_good(frame_temp):
+                good_frame = frame_temp
+                break
+        frame = cv2.resize(good_frame, (display_width, display_height))
+        print("Frame yang bagus telah ditemukan, siap membuat koordinat.")
+        while True:
+            frame_copy = frame.copy()
+            draw_chains(frame_copy)
             if dragging and preview_point is not None:
-                frame_copy = frame.copy()
                 if len(chains) > 0 and len(chains[-1]) > 0:
                     cv2.line(frame_copy, chains[-1][-1], preview_point, (255, 0, 0), 2)
                 cv2.circle(frame_copy, preview_point, 5, (0, 255, 0), -1)
-                cv2.imshow("Video", frame_copy)
-            else:
-                cv2.imshow("Video", frame)
-
+            cv2.imshow("Video", frame_copy)
             key = cv2.waitKey(1) & 0xFF
             if key in [ord("n"), ord("N")]:
                 print_borders()
@@ -250,7 +229,6 @@ def main():
                 chains = []
             elif key == ord("f"):
                 undo_last_point()
-
         cap.release()
 
     cv2.destroyAllWindows()
