@@ -144,15 +144,24 @@ class DifferenceDetector:
             output = frame.copy()
             current_time = time.time()
             with self.lock:
-                # Lakukan proses SSIM di setiap ROI
                 for idx, roi in enumerate(self.rois):
                     x, y, w, h = self.bounding_boxes[idx]
-                    mask = self.precomputed_masks[idx]
-                    ref_crop = cv2.bitwise_and(self.reference_img[y : y + h, x : x + w], self.reference_img[y : y + h, x : x + w], mask=mask)
-                    tgt_crop = cv2.bitwise_and(frame[y : y + h, x : x + w], frame[y : y + h, x : x + w], mask=mask)
-                    if ref_crop.size == 0 or tgt_crop.size == 0:
+                    x2 = min(x + w, self.target_width)
+                    y2 = min(y + h, self.target_height)
+                    if x2 <= x or y2 <= y:
                         self.handle_roi_timer(idx, False, current_time)
                         continue
+
+                    mask = self.precomputed_masks[idx]
+                    mask_clipped = mask[0 : (y2 - y), 0 : (x2 - x)]
+                    ref_sub = self.reference_img[y:y2, x:x2]
+                    tgt_sub = frame[y:y2, x:x2]
+                    if ref_sub.size == 0 or tgt_sub.size == 0 or mask_clipped.size == 0:
+                        self.handle_roi_timer(idx, False, current_time)
+                        continue
+
+                    ref_crop = cv2.bitwise_and(ref_sub, ref_sub, mask=mask_clipped)
+                    tgt_crop = cv2.bitwise_and(tgt_sub, tgt_sub, mask=mask_clipped)
 
                     aligned_tgt = self.align_images(ref_crop, tgt_crop)
                     if aligned_tgt is None:
@@ -160,27 +169,25 @@ class DifferenceDetector:
                         continue
 
                     try:
-                        gray_ref = cv2.cvtColor(ref_crop, cv2.COLOR_BGR2GRAY)
-                        gray_align = cv2.cvtColor(aligned_tgt, cv2.COLOR_BGR2GRAY)
-                        score, diff = ssim(gray_ref, gray_align, full=True)
+                        g_ref = cv2.cvtColor(ref_crop, cv2.COLOR_BGR2GRAY)
+                        g_tgt = cv2.cvtColor(aligned_tgt, cv2.COLOR_BGR2GRAY)
+                        score, diff = ssim(g_ref, g_tgt, full=True)
                         diff = (diff * 255).astype("uint8")
                         thresh = cv2.threshold(diff, self.sensitivity_threshold, 255, cv2.THRESH_BINARY_INV)[1]
-                        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-                        thresh = cv2.dilate(thresh, kernel, iterations=2)
-                        thresh = cv2.erode(thresh, kernel, iterations=1)
-                        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                        detection_found = False
-                        for c in contours:
+                        kern = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+                        thresh = cv2.dilate(thresh, kern, iterations=2)
+                        thresh = cv2.erode(thresh, kern, iterations=1)
+                        cnts, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                        found = False
+                        for c in cnts:
                             if cv2.contourArea(c) > 100:
-                                cx, cy, cw, ch = cv2.boundingRect(c)
-                                cv2.rectangle(output, (x + cx, y + cy), (x + cx + cw, y + cy + ch), (0, 0, 255), 2)
-                                detection_found = True
-
-                        self.handle_roi_timer(idx, detection_found, current_time)
-                        dur_str = self.get_roi_timer_str(idx, current_time)
-                        tx, ty = self.place_text_in_roi(output, dur_str, x, y, w, h)
-                        cv2.putText(output, dur_str, (tx, ty), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
-
+                                xx, yy, ww, hh = cv2.boundingRect(c)
+                                cv2.rectangle(output, (x + xx, y + yy), (x + xx + ww, y + yy + hh), (0, 0, 255), 2)
+                                found = True
+                        self.handle_roi_timer(idx, found, current_time)
+                        timer_str = self.get_roi_timer_str(idx, current_time)
+                        tx, ty = self.place_text_in_roi(output, timer_str, x, y, w, h)
+                        cv2.putText(output, timer_str, (tx, ty), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,0), 1)
                     except Exception as e:
                         print(f"Error ROI {idx}: {e}")
                         self.handle_roi_timer(idx, False, current_time)
@@ -195,19 +202,13 @@ class DifferenceDetector:
                 self.latest_frame = output.copy()
                 self.latest_original_frame = frame.copy()
 
-            # Tampilkan nilai sensitivitas di sisi kiri-atas frame
-            cv2.putText(output, f"Threshold: {self.sensitivity_threshold}", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)  # posisi teks  # skala font
-
-            # **Tambahkan Penggambaran ROIs di Sini**
+            cv2.putText(output, f"Threshold: {self.sensitivity_threshold}", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,255,0), 2)
             for roi in self.rois:
-                # Pastikan ROI adalah list dari tuple (x, y)
                 if len(roi) >= 2:
-                    cv2.polylines(output, [np.array(roi, np.int32)], isClosed=True, color=(0, 255, 0), thickness=2)
+                    cv2.polylines(output, [np.array(roi, np.int32)], True, (0,255,0), 2)
 
-            # Jika user menekan 'r', kita toggle tampilan referensi
             if self.show_reference:
-                ref_disp = self.reference_display.copy()
-                combo = cv2.hconcat([output, ref_disp])
+                combo = cv2.hconcat([output, self.reference_display])
                 cv2.imshow("DifferenceDetector", combo)
             else:
                 cv2.imshow("DifferenceDetector", output)
@@ -326,7 +327,7 @@ class DifferenceDetector:
         return (tx, ty)
 
     def camera_config():
-        with open(r"C:\xampp\htdocs\VISUALAI\website\five_s\static\resources\conf\camera_config.json", "r") as f:
+        with open(r"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\resources\conf\camera_config.json", "r") as f:
             config = json.load(f)
         office_key = "CUTTING8"
         reference_filename = config[office_key]["dd_reference"]

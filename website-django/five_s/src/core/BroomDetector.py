@@ -145,7 +145,7 @@ class BroomDetector:
             output_frame = frame_resized.copy()
             for idx, pt in enumerate(self.dot_points):
                 color = (0, 255, 0) if self.dot_status[idx] else (0, 255, 255)
-                cv2.circle(output_frame, pt, 5, color, -1)
+                cv2.circle(output_frame, pt, 8, color, -1)
             boxes = self.export_frame_detect(frame_resized)
             detected = False
             for box in boxes:
@@ -153,8 +153,8 @@ class BroomDetector:
                 for idx, pt in enumerate(self.dot_points):
                     if x1 <= pt[0] <= x2 and y1 <= pt[1] <= y2:
                         self.dot_status[idx] = True
-                cvzone.cornerRect(output_frame, (x1, y1, x2 - x1, y2 - y1), l=10, rt=0, t=2, colorC=(0, 255, 255))
-                cvzone.putTextRect(output_frame, f"{class_id}", (x1, y1), scale=1, thickness=2, offset=5)
+                # cvzone.cornerRect(output_frame, (x1, y1, x2 - x1, y2 - y1), l=10, rt=0, t=2, colorC=(0, 255, 255))
+                # cvzone.putTextRect(output_frame, f"{class_id}", (x1, y1), scale=1, thickness=2, offset=5)
                 detected = True
             touched = sum(1 for status in self.dot_status if status)
             total = len(self.dot_status)
@@ -184,7 +184,7 @@ class BroomDetector:
                             self.trail_map_polygon = self.trail_map_polygon.union(new_area)
                             self.draw_polygon_on_mask(new_area, self.trail_map_mask, color=(0, 255, 0))
 
-                    cvzone.cornerRect(output_frame, (x1, y1, x2 - x1, y2 - y1), l=10, rt=0, t=2, colorC=(0, 255, 255))
+                    # cvzone.cornerRect(output_frame, (x1, y1, x2 - x1, y2 - y1), l=10, rt=0, t=2, colorC=(0, 255, 255))
                     cvzone.putTextRect(output_frame, f"{class_id} {overlap_results}", (x1, y1), scale=1, thickness=2, offset=5)
 
             overlap_percentage = 0
@@ -342,5 +342,5 @@ class BroomDetector:
 
 
 if __name__ == "__main__":
-    bd = BroomDetector(camera_name="KANTIN1", is_insert=False)
+    bd = BroomDetector(camera_name="GM2CUTTING3", which_method="dot", is_insert=False)
     bd.main()

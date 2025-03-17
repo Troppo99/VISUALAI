@@ -137,9 +137,17 @@ def print_borders():
     borders = [[[p[0], p[1]] for p in chain] for chain in chains if len(chain) > 0]
     print(f"Original Borders = {borders}")
 
-    # Skalakan koordinat
-    scaled_borders = [[scale_coordinate(p) for p in chain] for chain in chains if len(chain) > 0]
-    print(f"Scaled Borders = {scaled_borders}")
+    # Contoh scaling 1.5 (tiap koordinat x dan y dikalikan 1.5)
+    borders_1_5 = []
+    for chain in borders:
+        chain_scaled = []
+        for x, y in chain:
+            chain_scaled.append([int(x * 1.5), int(y * 1.5)])
+        borders_1_5.append(chain_scaled)
+    print("Original Borders x1.5 =", borders_1_5)
+
+    scaled_borders = [[scale_coordinate(p) for p in chain] for chain in borders]
+    print("Scaled Borders =", scaled_borders)
 
     # Simpan ke file JSON
     # output_file = os.path.join(OUTPUT_DIRECTORY, f"{file_name}_scaled.json")
