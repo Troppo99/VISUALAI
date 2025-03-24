@@ -214,7 +214,7 @@ def main():
                     chains.append([])
             elif key == ord("a"):
                 chains = []
-            elif key == ord("f"):
+            elif key in [ord("F"), ord("f")]:
                 undo_last_point()
 
     else:

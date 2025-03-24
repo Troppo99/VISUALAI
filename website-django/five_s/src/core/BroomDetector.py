@@ -342,5 +342,5 @@ class BroomDetector:
 
 
 if __name__ == "__main__":
-    bd = BroomDetector(camera_name="GM2CUTTING3", which_method="dot", is_insert=False)
+    bd = BroomDetector(camera_name="KANTIN3", which_method=None, is_insert=False)
     bd.main()

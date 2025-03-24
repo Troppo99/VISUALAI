@@ -187,7 +187,7 @@ class DifferenceDetector:
                         self.handle_roi_timer(idx, found, current_time)
                         timer_str = self.get_roi_timer_str(idx, current_time)
                         tx, ty = self.place_text_in_roi(output, timer_str, x, y, w, h)
-                        cv2.putText(output, timer_str, (tx, ty), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,0), 1)
+                        cv2.putText(output, timer_str, (tx, ty), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
                     except Exception as e:
                         print(f"Error ROI {idx}: {e}")
                         self.handle_roi_timer(idx, False, current_time)
@@ -202,10 +202,10 @@ class DifferenceDetector:
                 self.latest_frame = output.copy()
                 self.latest_original_frame = frame.copy()
 
-            cv2.putText(output, f"Threshold: {self.sensitivity_threshold}", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,255,0), 2)
+            cv2.putText(output, f"Threshold: {self.sensitivity_threshold}", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
             for roi in self.rois:
                 if len(roi) >= 2:
-                    cv2.polylines(output, [np.array(roi, np.int32)], True, (0,255,0), 2)
+                    cv2.polylines(output, [np.array(roi, np.int32)], True, (0, 255, 0), 2)
 
             if self.show_reference:
                 combo = cv2.hconcat([output, self.reference_display])
@@ -329,16 +329,17 @@ class DifferenceDetector:
     def camera_config():
         with open(r"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\resources\conf\camera_config.json", "r") as f:
             config = json.load(f)
-        office_key = "CUTTING8"
-        reference_filename = config[office_key]["dd_reference"]
-        ip_camera = config[office_key]["ip"]
-        dd_rois_path = config[office_key]["dd_rois"]
+        camera_name = "CUTTING8"
+        reference_filename = config[camera_name]["dd_reference"]
+        ip_camera = config[camera_name]["ip"]
+        dd_rois_path = config[camera_name]["dd_rois"]
         with open(dd_rois_path, "r") as f_rois:
             rois = json.load(f_rois)
         return reference_filename, ip_camera, rois
 
+
 if __name__ == "__main__":
-    reference_filename, ip_camera, rois = DifferenceDetector.camera_config()    
+    reference_filename, ip_camera, rois = DifferenceDetector.camera_config()
     try:
         dd = DifferenceDetector(video_source="rtsp", rois=rois, reference_filename=reference_filename, ip_camera=ip_camera)
     except ValueError as e:

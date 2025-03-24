@@ -15,7 +15,7 @@ class CameraPlay:
             "CUTTING5",
             "CUTTING8",
             "CUTTING9",
-            "EXPEDISI1",
+            "EKSPEDISI1",
             "FOLDING1",
             "FOLDING2",
             "FOLDING3",
@@ -52,7 +52,7 @@ class CameraPlay:
         ]
 
         self.pcs = [
-            "PC-100",
+            # "PC-100",
             "PC-101",
             "PC-102",
             "PC-8",
@@ -89,7 +89,7 @@ camera_schedules = {{
         "time_ranges": [
             ((7, 30, 0), (9, 44, 0)),
             ((9, 45, 0), (12, 49, 0)),
-            ((12, 50, 0), (13, 5, 0)),
+            ((12, 50, 0), (15, 30, 0)),
         ],
     }}
 }}
