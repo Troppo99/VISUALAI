@@ -1,11 +1,22 @@
 import cv2
 from ultralytics import YOLO
+import json
 
-model = YOLO(r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\resources\models\strip2\weights\best.pt")
+
+def camera_config():
+    with open(r"\\10.5.0.3\VISUALAI\website-django\five_s\static\resources\conf\camera_config.json", "r") as f:
+        config = json.load(f)
+    ip = config["ROBOTICS"]["ip"]
+
+    return ip
+
+
+model = YOLO(r"\\10.5.0.3\VISUALAI\website-django\five_s\static\resources\models\yolo11l.pt").to("cuda")
 cap = cv2.VideoCapture(
+    f"rtsp://admin:oracle2015@{camera_config()}:554/Streaming/Channels/1",
     # r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\videos\test2.mp4",
-    0,
-    cv2.CAP_DSHOW,
+    # 0,
+    # cv2.CAP_DSHOW,
 )
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
