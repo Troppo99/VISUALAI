@@ -11,7 +11,7 @@ def camera_config():
     return ip
 
 
-model = YOLO(r"\\10.5.0.3\VISUALAI\website-django\five_s\static\resources\models\yolo11l.pt").to("cuda")
+model = YOLO(r"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\resources\models\blower\weights\best.pt").to("cuda")
 cap = cv2.VideoCapture(
     f"rtsp://admin:oracle2015@{camera_config()}:554/Streaming/Channels/1",
     # r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\videos\test2.mp4",

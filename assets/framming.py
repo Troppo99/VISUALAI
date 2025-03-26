@@ -8,15 +8,15 @@ def make_dir(path):
 
 
 print(40 * "- ")
-video_path = r"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\images\labeling\videos\stitches.mp4"
+video_path = r"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\videos\labeling\blower.mp4"
 
 cap = cv2.VideoCapture(video_path)
 
-base_output_dir = rf"C:\xampp\htdocs\VISUALAI\website-django\inspection\static\images\labeling\stitches"
+base_output_dir = rf"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\images\labeling\blower"
 make_dir(base_output_dir)
 
-total_frames = 200
-folders_count = 2
+total_frames = 500
+folders_count = 5
 frames_per_folder = total_frames // folders_count
 
 frame_rate = int(cap.get(cv2.CAP_PROP_FPS))

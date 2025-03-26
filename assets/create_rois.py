@@ -7,7 +7,7 @@ import json
 def camera_config():
     with open(r"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\resources\conf\camera_config.json", "r") as f:
         config = json.load(f)
-    ip = config["CUTTING4"]["ip"]
+    ip = config["ROBOTICS"]["ip"]
     return ip
 
 
@@ -226,6 +226,7 @@ def main():
 
         while True:
             ret, frame = cap.read()
+            print(f"shape : {frame.shape}")
             if not ret:
                 # Jika di video file sudah habis, ulangi dari awal
                 cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
