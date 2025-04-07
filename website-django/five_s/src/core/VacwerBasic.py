@@ -19,13 +19,13 @@ def get_camera_config(camera_name):
 
 def scale_roi(roi_points, orig_w, orig_h, new_w, new_h):
     sw, sh = new_w / orig_w, new_h / orig_h
-    scaled = []
+    out = []
     for polygon in roi_points:
         sp = []
         for x, y in polygon:
             sp.append((int(x * sw), int(y * sh)))
-        scaled.append(sp)
-    return scaled
+        out.append(sp)
+    return out
 
 
 def bbox_polygon(x1, y1, x2, y2):
@@ -50,84 +50,117 @@ def dist_pts(a, b):
 
 camera_name = "ROBOTICS"
 roi_list, ip = get_camera_config(camera_name)
-model = YOLO(r"\\10.5.0.3\VISUALAI\website-django\five_s\static\resources\models\yolo11l.pt").to("cuda")
+model = YOLO(r"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\resources\models\vaccum4\weights\best.pt").to("cuda")
 
-cap = cv2.VideoCapture(f"rtsp://admin:oracle2015@{ip}:554/Streaming/Channels/1")
+# cap = cv2.VideoCapture(f"rtsp://admin:oracle2015@{ip}:554/Streaming/Channels/1")
+# cap = cv2.VideoCapture(r"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\videos\labeling\blower.mp4")
+cap = cv2.VideoCapture(r"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\videos\labeling\vaccum.mp4")
 
 target_infer_size = (1280, 1280)
 original_roi_size = (1280, 720)
 movement_threshold = 25
+hysteresis_time = 5.0
 
 prev_center = None
-active_time = 0.0  # total durasi bergerak di atas threshold
-total_time = 0.0  # total durasi objek terdeteksi
+active_time = 0.0
+total_time = 0.0
 last_time = time.time()
+realtime_status = "Not used"
+last_movement_time = 0.0
+
+# Variabel untuk freeze
+last_good_frame = None
+frozen_mode = False  # Apakah sedang menampilkan frame beku
 
 while True:
-    ret, frame = cap.read()
+    ret, raw_frame = cap.read()
     if not ret:
         break
 
-    frame = cv2.resize(frame, target_infer_size)
-    scaled_rois = scale_roi(roi_list, original_roi_size[0], original_roi_size[1], target_infer_size[0], target_infer_size[1])
+    try:
+        # Kalau sempat error di line-line di bawah, akan lompat ke except dan freeze
+        frame = cv2.resize(raw_frame, target_infer_size)
+        scaled_rois = scale_roi(roi_list, original_roi_size[0], original_roi_size[1], target_infer_size[0], target_infer_size[1])
 
-    results = model(frame, imgsz=target_infer_size[0])
+        results = model(frame, imgsz=target_infer_size[0])
 
-    highest_conf_box = None
-    highest_conf = 0
+        highest_conf_box = None
+        highest_conf = 0
 
-    for r in results:
-        for b in r.boxes:
-            x1, y1, x2, y2 = map(int, b.xyxy[0])
-            conf = float(b.conf[0])
-            cls_name = model.names[int(b.cls[0])]
-            if cls_name == "person" and conf > highest_conf:
-                if is_overlapped_with_any_roi(x1, y1, x2, y2, scaled_rois):
-                    highest_conf = conf
-                    highest_conf_box = (x1, y1, x2, y2)
+        for r in results:
+            for b in r.boxes:
+                x1, y1, x2, y2 = map(int, b.xyxy[0])
+                conf = float(b.conf[0])
+                cls_name = model.names[int(b.cls[0])]
+                if conf > highest_conf:
+                    if is_overlapped_with_any_roi(x1, y1, x2, y2, scaled_rois):
+                        highest_conf = conf
+                        highest_conf_box = (x1, y1, x2, y2)
 
-    current_time = time.time()
-    delta_time = current_time - last_time
+        current_time = time.time()
+        delta_time = current_time - last_time
 
-    # Kalau objek dengan confidence tertinggi ditemukan
-    if highest_conf_box is not None:
-        x1, y1, x2, y2 = highest_conf_box
-        cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+        if highest_conf_box is not None:
+            x1, y1, x2, y2 = highest_conf_box
+            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
 
-        total_time += delta_time
+            total_time += delta_time
 
-        if prev_center is not None:
-            movement = dist_pts((cx, cy), prev_center)
-            if movement > movement_threshold:
-                active_time += delta_time
-                realtime_status = "Active Working"
+            if prev_center is not None:
+                movement = dist_pts((cx, cy), prev_center)
+                if movement > movement_threshold:
+                    last_movement_time = current_time
+                    if realtime_status != "Active Working":
+                        realtime_status = "Active Working"
+                    active_time += delta_time
+                else:
+                    time_since_move = current_time - last_movement_time
+                    if time_since_move <= hysteresis_time:
+                        realtime_status = "Active Working"
+                        active_time += delta_time
+                    else:
+                        realtime_status = "Not used"
             else:
                 realtime_status = "Not used"
+
+            percentage = (active_time / total_time) * 100 if total_time > 0 else 0
+
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 255), 3)
+            cv2.putText(frame, f"{realtime_status}", (x1, max(0, y1 - 40)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            cv2.putText(frame, f"% Active : {percentage:.1f}%", (x1, max(0, y1 - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+
+            prev_center = (cx, cy)
         else:
-            # Kalau baru pertama kali terdeteksi
-            realtime_status = "Not used"
+            prev_center = None
 
-        percentage = (active_time / total_time) * 100 if total_time > 0 else 0
+        # Gambar poligon ROI
+        for poly in scaled_rois:
+            arr = np.array(poly, dtype=np.int32)
+            cv2.polylines(frame, [arr], True, (0, 0, 255), 2)
 
-        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 255), 3)
-        cv2.putText(frame, f"{realtime_status}", (x1, max(0, y1 - 40)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-        cv2.putText(frame, f"Active : {percentage:.1f}%", (x1, max(0, y1 - 10)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-
-        prev_center = (cx, cy)
         last_time = current_time
-    else:
-        prev_center = None
 
+        # Berhasil memproses frame => update last_good_frame, matikan frozen mode jika aktif
+        last_good_frame = frame.copy()
+        if frozen_mode:
+            frozen_mode = False
 
-    for poly in scaled_rois:
-        arr = np.array(poly, dtype=np.int32)
-        cv2.polylines(frame, [arr], True, (0, 0, 255), 2)
+    except Exception as e:
+        # Jika ada error => freeze tampilan
+        if last_good_frame is not None:
+            # Kita tetap menampilkan last_good_frame
+            frame = last_good_frame
+            frozen_mode = True
+        else:
+            # Kalau belum ada last_good_frame, ya kita break atau skip
+            break
 
     cv2.namedWindow("Inference", cv2.WINDOW_NORMAL)
     cv2.resizeWindow("Inference", 1280, 720)
+
+    # Tampilkan frame (bisa frame normal atau last_good_frame jika beku)
     cv2.imshow("Inference", frame)
+
     if cv2.waitKey(1) & 0xFF == ord("n"):
         break
 

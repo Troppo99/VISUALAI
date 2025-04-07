@@ -11,11 +11,12 @@ class VacwerDetector:
         self.video_source = video_source
         self.camera_name = camera_name
         self.window_size = window_size
-        self.process_size = (640, 640)
+        self.process_size = (1280, 1280)
 
         self.rois, self.ip_camera = self.camera_config()
         self.prev_frame_time = 0
         self.model = YOLO(r"\\10.5.0.3\VISUALAI\website-django\five_s\static\resources\models\yolo11l.pt").to("cuda")
+        self.model = YOLO(r"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\resources\models\blower\weights\best.pt").to("cuda")
         self.model.overrides["verbose"] = False
 
         self.window_width, self.window_height = window_size
@@ -95,9 +96,10 @@ class VacwerDetector:
             for box in r.boxes:
                 conf = float(box.conf[0].cpu().item())
                 cls_id = int(box.cls[0].cpu().item())
-                if conf < self.confidence_threshold and cls_id != "person":
+                label = self.model.names.get(cls_id, f"class_{cls_id}")
+
+                if label != "person" or conf < self.confidence_threshold:
                     continue
-                label = self.model.names[cls_id] if cls_id in self.model.names else f"class_{cls_id}"
                 x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().tolist()
                 cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
                 center = Point(cx, cy)
@@ -118,7 +120,7 @@ class VacwerDetector:
         return frame_resized, overlap_detected
 
     def main(self):
-        skip_frames = 2
+        skip_frames = 1
         frame_count = 0
         window_name = f"CND:{self.camera_name}"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
@@ -181,5 +183,5 @@ class VacwerDetector:
 
 
 if __name__ == "__main__":
-    cnd = VacwerDetector(camera_name="ROBOTICS")
+    cnd = VacwerDetector(camera_name="GM2CUTTING1", video_source=r"C:\xampp\htdocs\VISUALAI\website-django\five_s\static\videos\labeling\blower.mp4")
     cnd.main()
