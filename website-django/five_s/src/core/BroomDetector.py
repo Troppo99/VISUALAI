@@ -6,6 +6,70 @@ from ultralytics import YOLO
 sys.path.append(r"\\10.5.0.3\VISUALAI\website-django\five_s\src")
 from libs.DataHandler import DataHandler
 
+# BroomDetector.py
+
+SCHEDULES = {
+    "DEFAULT": {
+        "work_days": ["mon", "tue", "wed", "thu", "fri"],
+        "time_ranges": [
+            ((7, 30, 0), (9, 44, 0)),
+            ((9, 45, 0), (12, 49, 0)),
+            ((12, 50, 0), (15, 30, 0)),
+        ],
+    },
+    # Contoh jika kamu ingin menambahkan jadwal2 lain
+    # "OFFICE1": {
+    #     "work_days": ["mon", "tue", "wed", "thu", "fri"],
+    #     "time_ranges": [((15, 23, 0), (15, 23, 10))]
+    # },
+}
+
+ALL_CAMERAS = [
+    "BUFFER1",
+    "CUTTING1",
+    "CUTTING10",
+    "CUTTING2",
+    "CUTTING3",
+    "CUTTING4",
+    "CUTTING5",
+    "CUTTING8",
+    "CUTTING9",
+    "EKSPEDISI1",
+    "FOLDING1",
+    "FOLDING2",
+    "FOLDING3",
+    "FREEMETAL1",
+    "FREEMETAL2",
+    "GUDANGACC1",
+    "GUDANGACC2",
+    "GUDANGACC3",
+    "GUDANGACC4",
+    "GUDANGKAIN1",
+    "GUDANGKAIN2",
+    "GUDANGKAIN3",
+    "GUDANGKAIN4",
+    "GUDANGKAIN5",
+    "INNERBOX1",
+    "KANTIN1",
+    "LINEMANUAL10",
+    "LINEMANUAL14",
+    "LINEMANUAL15",
+    "METALDET1",
+    "OFFICE1",
+    "OFFICE2",
+    "OFFICE3",
+    "SEWING1",
+    "SEWING2",
+    "SEWING3",
+    "SEWING4",
+    "SEWING5",
+    "SEWING6",
+    "SEWING7",
+    "SEWINGBACK1",
+    "SEWINGBACK2",
+    "SEWINGOFFICE",
+]
+
 
 class BroomDetector:
     def __init__(self, confidence_threshold=0.5, video_source=None, camera_name=None, window_size=(320, 240), stop_event=None, is_insert=False, which_method="trail_map"):

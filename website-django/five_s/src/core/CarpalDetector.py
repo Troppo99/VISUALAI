@@ -6,6 +6,29 @@ from ultralytics import YOLO
 sys.path.append(r"\\10.5.0.3\VISUALAI\website-django\five_s\src")
 from libs.DataHandler import DataHandler
 
+SCHEDULES = {
+    "DEFAULT": {
+        "work_days": ["mon", "tue", "wed", "thu", "fri"],
+        "time_ranges": [
+            ((6, 0, 0), (8, 30, 0)),
+        ],
+    },
+    # Contoh jika kamu ingin menambahkan jadwal2 lain
+    # "OFFICE1": {
+    #     "work_days": ["mon", "tue", "wed", "thu", "fri"],
+    #     "time_ranges": [((15, 23, 0), (15, 23, 10))]
+    # },
+}
+
+ALL_CAMERAS = [
+    "HALAMANDEPAN1",
+    "CUTTING5",
+    "SEWINGOFFICE",
+    "OFFICE1",
+    "OFFICE2",
+    "OFFICE3",
+]
+
 
 class CarpalDetector:
     def __init__(self, confidence_threshold=0.5, video_source=None, camera_name=None, window_size=(540, 360), stop_event=None, is_insert=False):

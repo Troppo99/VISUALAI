@@ -1,58 +1,15 @@
-import subprocess
-import socket
+import subprocess, socket, sys
 from pathlib import Path
+
+sys.path.append(r"\\10.5.0.3\VISUALAI\website-django\five_s\src")
+from core.BroomDetector import ALL_CAMERAS  # Diambil dari BroomDetector
 
 
 class CameraPlay:
     def __init__(self):
-        self.all_camera = [
-            "BUFFER1",
-            "CUTTING1",
-            "CUTTING10",
-            "CUTTING2",
-            "CUTTING3",
-            "CUTTING4",
-            "CUTTING5",
-            "CUTTING8",
-            "CUTTING9",
-            "EKSPEDISI1",
-            "FOLDING1",
-            "FOLDING2",
-            "FOLDING3",
-            "FREEMETAL1",
-            "FREEMETAL2",
-            "GUDANGACC1",
-            "GUDANGACC2",
-            "GUDANGACC3",
-            "GUDANGACC4",
-            "GUDANGKAIN1",
-            "GUDANGKAIN2",
-            "GUDANGKAIN3",
-            "GUDANGKAIN4",
-            "GUDANGKAIN5",
-            "INNERBOX1",
-            "KANTIN1",
-            "LINEMANUAL10",
-            "LINEMANUAL14",
-            "LINEMANUAL15",
-            "METALDET1",
-            "OFFICE1",
-            "OFFICE2",
-            "OFFICE3",
-            "SEWING1",
-            "SEWING2",
-            "SEWING3",
-            "SEWING4",
-            "SEWING5",
-            "SEWING6",
-            "SEWING7",
-            "SEWINGBACK1",
-            "SEWINGBACK2",
-            "SEWINGOFFICE",
-        ]
+        self.all_camera = ALL_CAMERAS
 
         self.pcs = [
-            # "PC-100",
             "PC-101",
             "PC-102",
             "PC-8",
@@ -71,33 +28,10 @@ sys.path.append(r"\\10.5.0.3\VISUALAI\website-django\five_s\src")
 from libs.test_Scheduler import Scheduler
 from pathlib import Path
 
-camera_schedules = {{
-    # "OFFICE1": {{
-    #     "work_days": ["mon", "tue", "wed", "thu", "fri"], 
-    #     "time_ranges": [((15, 23, 0), (15, 23, 10))],
-    # }},
-    # "OFFICE2": {{
-    #     "work_days": ["mon", "tue", "wed", "thu", "fri"], 
-    #     "time_ranges": [((15, 23, 0), (15, 23, 10))],
-    # }},
-    # "OFFICE3": {{
-    #     "work_days": ["mon", "tue", "wed", "thu", "fri"], 
-    #     "time_ranges": [((15, 23, 0), (15, 23, 10))],
-    # }},
-    "DEFAULT": {{
-        "work_days": ["mon", "tue", "wed", "thu", "fri"], 
-        "time_ranges": [
-            ((7, 30, 0), (9, 44, 0)),
-            ((9, 45, 0), (12, 49, 0)),
-            ((12, 50, 0), (15, 30, 0)),
-        ],
-    }}
-}}
+from core.BroomDetector import SCHEDULES
 
 camera_name = "{camera}"
-
-schedule_config = camera_schedules.get(camera_name, camera_schedules["DEFAULT"])
-
+schedule_config = SCHEDULES.get(camera_name, SCHEDULES["DEFAULT"])
 detector_args = {{
     "camera_name": camera_name,
     "window_size": (320, 240),
